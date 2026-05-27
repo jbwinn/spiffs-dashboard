@@ -1,0 +1,48 @@
+name: Compile & Package Release (Native AOT & Velopack)
+
+on:
+  push:
+    tags:
+      - 'v*' # Triggers on any tag push matching v1.0.0, v1.1.0, etc.
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    permissions:
+      contents: write # Grants permissions to create releases and upload assets
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup .NET 10 SDK
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Restore Dependencies
+      run: dotnet restore
+
+    - name: Publish Standalone Native AOT Release
+      run: dotnet publish SalesLedger/SalesLedger.csproj -r win-x64 -c Release /p:PublishAot=true -o ./publish
+
+    - name: Install Velopack CLI Tool
+      run: dotnet tool install -g vpk
+
+    # Optional: vpk download github pulls down the previous release assets
+    # so Velopack can calculate delta packages (.nupkg differentials) for faster updates.
+    # We ignore failures (e.g. on the first release when no release exists yet).
+    - name: Download Previous Releases for Deltas
+      run: |
+        vpk download github --repoUrl https://github.com/${{ github.repository }}
+      continue-on-error: true
+
+    - name: Package Release Installers
+      run: |
+        vpk pack -u SalesLedgerApp -v ${{ github.ref_name }} -p ./publish -e SalesLedger.exe
+
+    - name: Upload Releases to GitHub
+      run: |
+        vpk upload github --repoUrl https://github.com/${{ github.repository }} --publish --tag ${{ github.ref_name }} --token ${{ secrets.GITHUB_TOKEN }}

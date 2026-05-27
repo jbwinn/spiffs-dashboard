@@ -1,0 +1,22 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="using:SalesLedger.Core.Converters"
+             x:Class="SalesLedger.App"
+             RequestedThemeVariant="Default">
+
+    <Application.Resources>
+        <conv:BoolToColorConverter x:Key="BoolToColorConverter"/>
+        <conv:BoolToDecorationConverter x:Key="BoolToDecorationConverter"/>
+        <conv:PresetToColorConverter x:Key="PresetToColorConverter"/>
+        <conv:PresetToTextConverter x:Key="PresetToTextConverter"/>
+        <conv:ActiveToStatusTextConverter x:Key="ActiveToStatusTextConverter"/>
+        <conv:EnumToBooleanConverter x:Key="EnumToBooleanConverter"/>
+        <conv:CalculationTypeToTextConverter x:Key="CalculationTypeToTextConverter"/>
+        <conv:StatusColorConverter x:Key="StatusColorConverter"/>
+    </Application.Resources>
+
+    <Application.Styles>
+        <FluentTheme />
+        <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml"/>
+    </Application.Styles>
+</Application>

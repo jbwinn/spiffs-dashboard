@@ -1,0 +1,61 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:SalesLedger.Core.ViewModels"
+        xmlns:views="using:SalesLedger.Core.Views"
+        mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="750"
+        x:Class="SalesLedger.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="Sales Ledger &amp; Commission Canvas"
+        Width="1280" Height="800"
+        WindowStartupLocation="CenterScreen"
+        Background="#0F172A"> <!-- Tailwind slate-900 background -->
+
+    <Grid RowDefinitions="Auto, *">
+        <!-- Top Navigation Header -->
+        <Border Grid.Row="0" Background="#1E293B" BorderBrush="#334155" BorderThickness="0,0,0,1" Height="64">
+            <Grid ColumnDefinitions="*, Auto" Margin="24,0">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="12">
+                    <!-- Logo / Brand icon -->
+                    <Border Background="#3B82F6" Width="36" Height="36" CornerRadius="8">
+                        <TextBlock Text="S" Foreground="White" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="Sales Ledger &amp; Analytics Canvas" Foreground="#F8FAFC" FontSize="16" FontWeight="SemiBold"/>
+                        <TextBlock Text="High-Performance Desktop Ledger" Foreground="#94A3B8" FontSize="11"/>
+                    </StackPanel>
+                </StackPanel>
+                
+                <!-- Navigation Toggle Button -->
+                <Button Grid.Column="1" 
+                        Content="{Binding SettingsButtonText}" 
+                        Command="{Binding ToggleWorkspaceCommand}" 
+                        Background="#3B82F6" 
+                        Foreground="White"
+                        FontWeight="SemiBold"
+                        Padding="16,8" 
+                        CornerRadius="6"
+                        BorderThickness="0">
+                    <Button.Styles>
+                        <Style Selector="Button:pointerover">
+                            <Setter Property="Background" Value="#2563EB"/>
+                        </Style>
+                    </Button.Styles>
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- Main Content Area with View Swapping -->
+        <TransitioningContentControl Grid.Row="1" Content="{Binding CurrentActiveWorkspace}">
+            <TransitioningContentControl.DataTemplates>
+                <DataTemplate DataType="vm:LedgerDashboardViewModel">
+                    <views:LedgerDashboardView />
+                </DataTemplate>
+                <DataTemplate DataType="vm:FullScreenSettingsViewModel">
+                    <views:FullScreenSettingsView />
+                </DataTemplate>
+            </TransitioningContentControl.DataTemplates>
+        </TransitioningContentControl>
+    </Grid>
+</Window>

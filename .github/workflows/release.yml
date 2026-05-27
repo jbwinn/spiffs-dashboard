@@ -39,9 +39,17 @@ jobs:
         vpk download github --repoUrl https://github.com/${{ github.repository }}
       continue-on-error: true
 
+    - name: Parse Version
+      id: get_version
+      shell: bash
+      run: |
+        TAG=${{ github.ref_name }}
+        VERSION=${TAG#v}
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+
     - name: Package Release Installers
       run: |
-        vpk pack -u SalesLedgerApp -v ${{ github.ref_name }} -p ./publish -e SalesLedger.exe
+        vpk pack -u SalesLedgerApp -v ${{ steps.get_version.outputs.version }} -p ./publish -e SalesLedger.exe
 
     - name: Upload Releases to GitHub
       run: |

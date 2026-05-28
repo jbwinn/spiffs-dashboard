@@ -34,6 +34,8 @@ namespace SalesLedger.Core.Services
         private readonly CancellationTokenSource _cts;
         private Task? _processingTask;
 
+        public event Action? SyncCompleted;
+
         public SyncPipeline(LiteDbService liteDb, DuckDbService duckDb)
         {
             _liteDb = liteDb;
@@ -75,6 +77,7 @@ namespace SalesLedger.Core.Services
             {
                 while (await reader.WaitToReadAsync(_cts.Token))
                 {
+                    bool processedAny = false;
                     while (reader.TryRead(out var action))
                     {
                         try
@@ -94,11 +97,17 @@ namespace SalesLedger.Core.Services
                                     RebuildDuckDb();
                                     break;
                             }
+                            processedAny = true;
                         }
                         catch (Exception ex)
                         {
                             Console.WriteLine($"[SyncPipeline] Error processing action {action.ActionType}: {ex.Message}");
                         }
+                    }
+
+                    if (processedAny)
+                    {
+                        SyncCompleted?.Invoke();
                     }
                 }
             }

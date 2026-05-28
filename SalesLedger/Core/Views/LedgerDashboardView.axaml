@@ -7,7 +7,8 @@
              mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="800"
              x:Class="SalesLedger.Core.Views.LedgerDashboardView"
              x:DataType="vm:LedgerDashboardViewModel"
-             Background="#0F172A"> <!-- Slate-900 -->
+             Background="{DynamicResource BgAppDark}"
+             FontFamily="{DynamicResource FontPrimary}">
 
     <UserControl.Styles>
         <Style Selector="DataGridRow StackPanel#ActionPanel">
@@ -28,65 +29,83 @@
                     <StackPanel Orientation="Horizontal" Spacing="16" VerticalAlignment="Bottom">
                         <Button Content="Import CSV Data..." 
                                 Command="{Binding ShowImportDialogCommand}" 
-                                Background="#8B5CF6" Foreground="White" 
-                                FontWeight="Bold" Padding="16,8" CornerRadius="6" Height="36" VerticalContentAlignment="Center"/>
+                                Background="{DynamicResource AccentPurple}" Foreground="White" 
+                                FontWeight="Bold" Padding="16,8" CornerRadius="6" Height="36" VerticalContentAlignment="Center">
+                            <Button.Styles>
+                                <Style Selector="Button:pointerover">
+                                    <Setter Property="Background" Value="{DynamicResource AccentPurpleHover}"/>
+                                </Style>
+                            </Button.Styles>
+                        </Button>
                     </StackPanel>
 
                     <!-- Add & Finalize Buttons -->
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Bottom">
                         <Button Content="+ Add Transaction" 
                                 Command="{Binding ShowAddSaleDialogCommand}" 
-                                Background="#3B82F6" Foreground="White" 
-                                FontWeight="Bold" Padding="16,8" CornerRadius="6" Height="36" VerticalContentAlignment="Center"/>
+                                Background="{DynamicResource AccentBlue}" Foreground="White" 
+                                FontWeight="Bold" Padding="16,8" CornerRadius="6" Height="36" VerticalContentAlignment="Center">
+                            <Button.Styles>
+                                <Style Selector="Button:pointerover">
+                                    <Setter Property="Background" Value="{DynamicResource AccentBlueHover}"/>
+                                </Style>
+                            </Button.Styles>
+                        </Button>
                         
                         <Button Content="Finalize Pay Period" 
                                 Command="{Binding ShowPeriodCloseDialogCommand}" 
-                                Background="#10B981" Foreground="White" 
-                                FontWeight="Bold" Padding="16,8" CornerRadius="6" Height="36" VerticalContentAlignment="Center"/>
+                                Background="{DynamicResource AccentGreen}" Foreground="White" 
+                                FontWeight="Bold" Padding="16,8" CornerRadius="6" Height="36" VerticalContentAlignment="Center">
+                            <Button.Styles>
+                                <Style Selector="Button:pointerover">
+                                    <Setter Property="Background" Value="{DynamicResource AccentGreenHover}"/>
+                                </Style>
+                            </Button.Styles>
+                        </Button>
                     </StackPanel>
                 </Grid>
 
                 <!-- KPI METRICS GRID (4 CARDS) -->
                 <Grid ColumnDefinitions="*, *, *, *">
                     <!-- Total Sales Card -->
-                    <Border Grid.Column="0" Background="#1E293B" BorderBrush="#334155" BorderThickness="1" CornerRadius="10" Padding="20" Margin="0,0,10,0">
+                    <Border Grid.Column="0" Background="{DynamicResource BgCardDark}" BorderBrush="{DynamicResource BorderSlate}" BorderThickness="1" CornerRadius="10" Padding="20" Margin="0,0,10,0">
                         <StackPanel Spacing="8">
-                            <TextBlock Text="Total Sales Volume" Foreground="#94A3B8" FontSize="12" FontWeight="SemiBold"/>
-                            <TextBlock Text="{Binding TotalSales, StringFormat='\{0:C}'}" Foreground="#3B82F6" FontSize="26" FontWeight="Bold"/>
+                            <TextBlock Text="Total Sales Volume" Foreground="{DynamicResource TextSecondary}" FontSize="12" FontWeight="SemiBold"/>
+                            <TextBlock Text="{Binding TotalSales, StringFormat='\{0:C}'}" Foreground="{DynamicResource AccentBlue}" FontSize="26" FontWeight="Bold"/>
                         </StackPanel>
                     </Border>
 
                     <!-- Units Sold Card -->
-                    <Border Grid.Column="1" Background="#1E293B" BorderBrush="#334155" BorderThickness="1" CornerRadius="10" Padding="20" Margin="10,0,10,0">
+                    <Border Grid.Column="1" Background="{DynamicResource BgCardDark}" BorderBrush="{DynamicResource BorderSlate}" BorderThickness="1" CornerRadius="10" Padding="20" Margin="10,0,10,0">
                         <StackPanel Spacing="8">
-                            <TextBlock Text="Total Units Sold" Foreground="#94A3B8" FontSize="12" FontWeight="SemiBold"/>
-                            <TextBlock Text="{Binding TotalUnitsSold}" Foreground="#10B981" FontSize="26" FontWeight="Bold"/>
+                            <TextBlock Text="Total Units Sold" Foreground="{DynamicResource TextSecondary}" FontSize="12" FontWeight="SemiBold"/>
+                            <TextBlock Text="{Binding TotalUnitsSold}" Foreground="{DynamicResource AccentGreen}" FontSize="26" FontWeight="Bold"/>
                         </StackPanel>
                     </Border>
 
                     <!-- Total Commission Card -->
-                    <Border Grid.Column="2" Background="#1E293B" BorderBrush="#334155" BorderThickness="1" CornerRadius="10" Padding="20" Margin="10,0,10,0">
+                    <Border Grid.Column="2" Background="{DynamicResource BgCardDark}" BorderBrush="{DynamicResource BorderSlate}" BorderThickness="1" CornerRadius="10" Padding="20" Margin="10,0,10,0">
                         <StackPanel Spacing="8">
-                            <TextBlock Text="Total Commission Earned" Foreground="#94A3B8" FontSize="12" FontWeight="SemiBold"/>
-                            <TextBlock Text="{Binding TotalCommission, StringFormat='\{0:C}'}" Foreground="#F59E0B" FontSize="26" FontWeight="Bold"/>
+                            <TextBlock Text="Total Commission Earned" Foreground="{DynamicResource TextSecondary}" FontSize="12" FontWeight="SemiBold"/>
+                            <TextBlock Text="{Binding TotalCommission, StringFormat='\{0:C}'}" Foreground="{DynamicResource AccentOrange}" FontSize="26" FontWeight="Bold"/>
                         </StackPanel>
                     </Border>
 
                     <!-- Average Sale Price Card -->
-                    <Border Grid.Column="3" Background="#1E293B" BorderBrush="#334155" BorderThickness="1" CornerRadius="10" Padding="20" Margin="10,0,0,0">
+                    <Border Grid.Column="3" Background="{DynamicResource BgCardDark}" BorderBrush="{DynamicResource BorderSlate}" BorderThickness="1" CornerRadius="10" Padding="20" Margin="10,0,0,0">
                         <StackPanel Spacing="8">
-                            <TextBlock Text="Average Sale Price (ASP)" Foreground="#94A3B8" FontSize="12" FontWeight="SemiBold"/>
-                            <TextBlock Text="{Binding AverageSalePrice, StringFormat='\{0:C}'}" Foreground="#EC4899" FontSize="26" FontWeight="Bold"/>
+                            <TextBlock Text="Average Sale Price (ASP)" Foreground="{DynamicResource TextSecondary}" FontSize="12" FontWeight="SemiBold"/>
+                            <TextBlock Text="{Binding AverageSalePrice, StringFormat='\{0:C}'}" Foreground="{DynamicResource AccentPink}" FontSize="26" FontWeight="Bold"/>
                         </StackPanel>
                     </Border>
                 </Grid>
 
                 <!-- MIDDLE SECTION: Trends Chart (Full Width) -->
                 <Grid ColumnDefinitions="*" Height="300">
-                    <Border Background="#1E293B" BorderBrush="#334155" BorderThickness="1" CornerRadius="10" Padding="20">
+                    <Border Background="{DynamicResource BgCardDark}" BorderBrush="{DynamicResource BorderSlate}" BorderThickness="1" CornerRadius="10" Padding="20">
                         <Grid RowDefinitions="Auto, *">
                             <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="0,0,0,12">
-                                <TextBlock Text="Sales Trends Graph" FontSize="15" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
+                                <TextBlock Text="Sales Trends Graph" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12">
                                     <ComboBox ItemsSource="{Binding TimeframeOptions}" SelectedItem="{Binding SelectedTimeframe, Mode=TwoWay}" Width="150" Height="30" VerticalContentAlignment="Center" FontSize="12"/>
                                     <ComboBox ItemsSource="{Binding MetricOptions}" SelectedItem="{Binding SelectedMetric, Mode=TwoWay}" Width="120" Height="30" VerticalContentAlignment="Center" FontSize="12"/>
@@ -105,35 +124,54 @@
                                     <DataTemplate x:DataType="vm:ChartItem">
                                         <StackPanel Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Bottom" Background="Transparent">
                                             <ToolTip.Tip>
-                                                <Border Background="#0F172A" BorderBrush="#475569" BorderThickness="1" CornerRadius="8" Padding="14">
+                                                <Border Background="{DynamicResource BgAppDark}" BorderBrush="{DynamicResource TextMuted}" BorderThickness="1" CornerRadius="8" Padding="14">
                                                     <StackPanel Spacing="8" MinWidth="200">
-                                                        <TextBlock Text="{Binding Label}" Foreground="White" FontSize="13" FontWeight="Bold"/>
+                                                        <TextBlock Text="{Binding Label}" Foreground="{DynamicResource TextPrimary}" FontSize="13" FontWeight="Bold"/>
                                                         
                                                         <Grid ColumnDefinitions="*, Auto">
-                                                            <TextBlock Text="Total Sales:" Foreground="#94A3B8" FontSize="11"/>
-                                                            <TextBlock Grid.Column="1" Text="{Binding TotalSalesText}" Foreground="#3B82F6" FontSize="11" FontWeight="Bold"/>
+                                                            <TextBlock Text="Total Sales:" Foreground="{DynamicResource TextSecondary}" FontSize="11"/>
+                                                            <TextBlock Grid.Column="1" Text="{Binding TotalSalesText}" Foreground="{DynamicResource AccentBlue}" FontSize="11" FontWeight="Bold"/>
                                                         </Grid>
                                                         <Grid ColumnDefinitions="*, Auto">
-                                                            <TextBlock Text="Units Sold:" Foreground="#94A3B8" FontSize="11"/>
-                                                            <TextBlock Grid.Column="1" Text="{Binding TotalUnitsText}" Foreground="#10B981" FontSize="11" FontWeight="Bold"/>
+                                                            <TextBlock Text="Units Sold:" Foreground="{DynamicResource TextSecondary}" FontSize="11"/>
+                                                            <TextBlock Grid.Column="1" Text="{Binding TotalUnitsText}" Foreground="{DynamicResource AccentGreen}" FontSize="11" FontWeight="Bold"/>
                                                         </Grid>
                                                         <Grid ColumnDefinitions="*, Auto">
-                                                            <TextBlock Text="Total Commission:" Foreground="#94A3B8" FontSize="11"/>
-                                                            <TextBlock Grid.Column="1" Text="{Binding TotalCommissionText}" Foreground="#F59E0B" FontSize="11" FontWeight="Bold"/>
+                                                            <TextBlock Text="Total Commission:" Foreground="{DynamicResource TextSecondary}" FontSize="11"/>
+                                                            <TextBlock Grid.Column="1" Text="{Binding TotalCommissionText}" Foreground="{DynamicResource AccentOrange}" FontSize="11" FontWeight="Bold"/>
                                                         </Grid>
                                                         <Grid ColumnDefinitions="*, Auto">
-                                                            <TextBlock Text="Highest Sale:" Foreground="#94A3B8" FontSize="11"/>
-                                                            <TextBlock Grid.Column="1" Text="{Binding HighestSaleText}" Foreground="#EC4899" FontSize="11" FontWeight="Bold"/>
+                                                            <TextBlock Text="Highest Sale:" Foreground="{DynamicResource TextSecondary}" FontSize="11"/>
+                                                            <TextBlock Grid.Column="1" Text="{Binding HighestSaleText}" Foreground="{DynamicResource AccentPink}" FontSize="11" FontWeight="Bold"/>
                                                         </Grid>
 
-                                                        <Border BorderBrush="#334155" BorderThickness="0,0,0,1" Margin="0,4"/>
-                                                        <TextBlock Text="Category Breakdown" Foreground="#E2E8F0" FontSize="10" FontWeight="Bold"/>
+                                                        <Border BorderBrush="{DynamicResource BorderSlate}" BorderThickness="0,0,0,1" Margin="0,4"/>
+                                                        <TextBlock Text="Type Breakdown" Foreground="{DynamicResource TextPrimary}" FontSize="10" FontWeight="Bold"/>
+                                                        <Grid ColumnDefinitions="*, Auto" Margin="0,1">
+                                                            <TextBlock Text="Standard:" Foreground="{DynamicResource TextSecondary}" FontSize="10"/>
+                                                            <TextBlock Grid.Column="1" Text="{Binding StandardBreakdownText}" Foreground="{DynamicResource TextPrimary}" FontSize="10" FontWeight="SemiBold"/>
+                                                        </Grid>
+                                                        <Grid ColumnDefinitions="*, Auto" Margin="0,1">
+                                                            <TextBlock Text="eBay:" Foreground="{DynamicResource TextSecondary}" FontSize="10"/>
+                                                            <TextBlock Grid.Column="1" Text="{Binding EbayBreakdownText}" Foreground="{DynamicResource TextPrimary}" FontSize="10" FontWeight="SemiBold"/>
+                                                        </Grid>
+                                                        <Grid ColumnDefinitions="*, Auto" Margin="0,1">
+                                                            <TextBlock Text="Warranty:" Foreground="{DynamicResource TextSecondary}" FontSize="10"/>
+                                                            <TextBlock Grid.Column="1" Text="{Binding WarrantyBreakdownText}" Foreground="{DynamicResource TextPrimary}" FontSize="10" FontWeight="SemiBold"/>
+                                                        </Grid>
+                                                        <Grid ColumnDefinitions="*, Auto" Margin="0,1" IsVisible="{Binding HasReturnOffsets}">
+                                                            <TextBlock Text="Return Offsets:" Foreground="{DynamicResource AccentRed}" FontSize="10"/>
+                                                            <TextBlock Grid.Column="1" Text="{Binding ReturnOffsetBreakdownText}" Foreground="{DynamicResource AccentRed}" FontSize="10" FontWeight="SemiBold"/>
+                                                        </Grid>
+
+                                                        <Border BorderBrush="{DynamicResource BorderSlate}" BorderThickness="0,0,0,1" Margin="0,4"/>
+                                                        <TextBlock Text="Category Breakdown" Foreground="{DynamicResource TextPrimary}" FontSize="10" FontWeight="Bold"/>
                                                         <ItemsControl ItemsSource="{Binding CategoriesBreakdown}">
                                                             <ItemsControl.ItemTemplate>
                                                                 <DataTemplate x:DataType="vm:CategoryDisplay">
                                                                     <Grid ColumnDefinitions="*, Auto" Margin="0,2">
-                                                                        <TextBlock Text="{Binding Name}" Foreground="#94A3B8" FontSize="10"/>
-                                                                        <TextBlock Grid.Column="1" Text="{Binding ValueText}" Foreground="#F8FAFC" FontSize="10" FontWeight="SemiBold" Margin="12,0,0,0"/>
+                                                                        <TextBlock Text="{Binding Name}" Foreground="{DynamicResource TextSecondary}" FontSize="10"/>
+                                                                        <TextBlock Grid.Column="1" Text="{Binding ValueText}" Foreground="{DynamicResource TextPrimary}" FontSize="10" FontWeight="SemiBold" Margin="12,0,0,0"/>
                                                                     </Grid>
                                                                 </DataTemplate>
                                                             </ItemsControl.ItemTemplate>
@@ -145,18 +183,18 @@
                                             <!-- Vertical Bar border -->
                                             <Border Width="18" 
                                                     Height="{Binding Height}" 
-                                                    Background="#3B82F6" 
+                                                    Background="{DynamicResource AccentBlue}" 
                                                     CornerRadius="4,4,0,0" 
                                                     HorizontalAlignment="Center"
                                                     VerticalAlignment="Bottom">
                                                 <Border.Styles>
                                                     <Style Selector="Border:pointerover">
-                                                        <Setter Property="Background" Value="#60A5FA"/>
+                                                        <Setter Property="Background" Value="{DynamicResource AccentBlueHover}"/>
                                                     </Style>
                                                 </Border.Styles>
                                             </Border>
                                             <!-- Label below bar -->
-                                            <TextBlock Text="{Binding Label}" Foreground="#64748B" FontSize="10" HorizontalAlignment="Center"/>
+                                            <TextBlock Text="{Binding Label}" Foreground="{DynamicResource TextSecondary}" FontSize="10" HorizontalAlignment="Center"/>
                                         </StackPanel>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
@@ -166,16 +204,16 @@
                 </Grid>
 
                 <!-- CATEGORY SALES DISTRIBUTION SECTION -->
-                <Border Background="#1E293B" BorderBrush="#334155" BorderThickness="1" CornerRadius="10" Padding="20">
+                <Border Background="{DynamicResource BgCardDark}" BorderBrush="{DynamicResource BorderSlate}" BorderThickness="1" CornerRadius="10" Padding="20">
                     <Grid RowDefinitions="Auto, *">
                         <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="0,0,0,16">
                             <StackPanel Spacing="4">
-                                <TextBlock Text="Category Sales Distribution" FontSize="15" FontWeight="Bold" Foreground="White"/>
-                                <TextBlock Text="Proportional category breakdown for the selected timeframe." FontSize="11" Foreground="#94A3B8"/>
+                                <TextBlock Text="Category Sales Distribution" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
+                                <TextBlock Text="Proportional category breakdown for the selected timeframe." FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
                             </StackPanel>
                             
                             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                <TextBlock Text="View By:" Foreground="#E2E8F0" FontSize="12" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                <TextBlock Text="View By:" Foreground="{DynamicResource TextPrimary}" FontSize="12" VerticalAlignment="Center" FontWeight="SemiBold"/>
                                 <ComboBox ItemsSource="{Binding CategoryBreakdownMetricOptions}" 
                                           SelectedItem="{Binding CategoryBreakdownMetric, Mode=TwoWay}" 
                                           Width="140" Height="30" VerticalContentAlignment="Center" FontSize="12"/>
@@ -193,9 +231,9 @@
                                 <DataTemplate x:DataType="vm:CategoryBreakdownItem">
                                     <Grid RowDefinitions="Auto, Auto" Margin="0,2">
                                         <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="0,0,0,4">
-                                            <TextBlock Text="{Binding Category}" Foreground="#E2E8F0" FontSize="12" FontWeight="SemiBold"/>
+                                            <TextBlock Text="{Binding Category}" Foreground="{DynamicResource TextPrimary}" FontSize="12" FontWeight="SemiBold"/>
                                             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
-                                                <TextBlock Text="{Binding ValueText}" Foreground="#94A3B8" FontSize="12"/>
+                                                <TextBlock Text="{Binding ValueText}" Foreground="{DynamicResource TextSecondary}" FontSize="12"/>
                                                 <TextBlock Text="{Binding Percentage, StringFormat='\{0:F1}%'}" Foreground="{Binding Color}" FontSize="12" FontWeight="Bold"/>
                                             </StackPanel>
                                         </Grid>
@@ -205,7 +243,7 @@
                                                      Minimum="0" Maximum="100" 
                                                      Height="8" 
                                                      Foreground="{Binding Color}" 
-                                                     Background="#334155" 
+                                                     Background="{DynamicResource BorderSlate}" 
                                                      CornerRadius="4"/>
                                     </Grid>
                                 </DataTemplate>
@@ -215,13 +253,20 @@
                 </Border>
 
                 <!-- TRANSACTION LEDGER DATA GRID -->
-                <Border Background="#1E293B" BorderBrush="#334155" BorderThickness="1" CornerRadius="10" Padding="12">
+                <Border Background="{DynamicResource BgCardDark}" BorderBrush="{DynamicResource BorderSlate}" BorderThickness="1" CornerRadius="10" Padding="12">
                     <Grid RowDefinitions="Auto, Auto, *">
-                        <!-- Header with title and High Value toggle -->
-                        <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="12,8,12,12">
-                            <TextBlock Text="Recent Sales Ledger" FontSize="15" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
-                            <CheckBox Grid.Column="1" IsChecked="{Binding HighValueSalesOnly, Mode=TwoWay}" VerticalAlignment="Center">
-                                <TextBlock Text="High Value Only (+$1,500)" Foreground="#E2E8F0" FontSize="12"/>
+                        <!-- Header with title, Reset Filters button, and High Value toggle -->
+                        <Grid Grid.Row="0" ColumnDefinitions="*, Auto, Auto" Margin="12,8,12,12">
+                            <TextBlock Text="Recent Sales Ledger" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
+                            <Button Grid.Column="1" Content="Reset Filters" Command="{Binding ResetFiltersCommand}" Background="{DynamicResource BorderSlate}" Foreground="White" Padding="10,4" CornerRadius="4" FontSize="11" Margin="0,0,16,0" VerticalAlignment="Center">
+                                <Button.Styles>
+                                    <Style Selector="Button:pointerover">
+                                        <Setter Property="Background" Value="{DynamicResource TextMuted}"/>
+                                    </Style>
+                                </Button.Styles>
+                            </Button>
+                            <CheckBox Grid.Column="2" IsChecked="{Binding HighValueSalesOnly, Mode=TwoWay}" VerticalAlignment="Center">
+                                <TextBlock Text="High Value Only (+$1,500)" Foreground="{DynamicResource TextPrimary}" FontSize="12"/>
                             </CheckBox>
                         </Grid>
                         
@@ -230,25 +275,25 @@
                             <Grid ColumnDefinitions="2*, *, *, *">
                                 <!-- Search input -->
                                 <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,10,0">
-                                    <TextBlock Text="Search Sale" Foreground="#94A3B8" FontSize="11" FontWeight="SemiBold"/>
+                                    <TextBlock Text="Search Sale" Foreground="{DynamicResource TextSecondary}" FontSize="11" FontWeight="SemiBold"/>
                                     <TextBox Text="{Binding SearchText, Mode=TwoWay}" PlaceholderText="Search SKU, Product, Invoice/Order Code..." Height="32" VerticalContentAlignment="Center"/>
                                 </StackPanel>
 
                                 <!-- Type Filter -->
                                 <StackPanel Grid.Column="1" Spacing="4" Margin="0,0,10,0">
-                                    <TextBlock Text="Sale Type" Foreground="#94A3B8" FontSize="11" FontWeight="SemiBold"/>
+                                    <TextBlock Text="Sale Type" Foreground="{DynamicResource TextSecondary}" FontSize="11" FontWeight="SemiBold"/>
                                     <ComboBox ItemsSource="{Binding SaleTypeFilterOptions}" SelectedItem="{Binding SelectedSaleTypeFilter, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="32" VerticalContentAlignment="Center" FontSize="12"/>
                                 </StackPanel>
 
                                 <!-- Category Filter -->
                                 <StackPanel Grid.Column="2" Spacing="4" Margin="0,0,10,0">
-                                    <TextBlock Text="Category" Foreground="#94A3B8" FontSize="11" FontWeight="SemiBold"/>
+                                    <TextBlock Text="Category" Foreground="{DynamicResource TextSecondary}" FontSize="11" FontWeight="SemiBold"/>
                                     <ComboBox ItemsSource="{Binding CategoryFilterOptions}" SelectedItem="{Binding SelectedCategoryFilter, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="32" VerticalContentAlignment="Center" FontSize="12"/>
                                 </StackPanel>
 
                                 <!-- Date Filter Type -->
                                 <StackPanel Grid.Column="3" Spacing="4">
-                                    <TextBlock Text="Filter by Date" Foreground="#94A3B8" FontSize="11" FontWeight="SemiBold"/>
+                                    <TextBlock Text="Filter by Date" Foreground="{DynamicResource TextSecondary}" FontSize="11" FontWeight="SemiBold"/>
                                     <ComboBox ItemsSource="{Binding DateFilterTypeOptions}" SelectedItem="{Binding SelectedDateFilterType, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="32" VerticalContentAlignment="Center" FontSize="12"/>
                                 </StackPanel>
                             </Grid>
@@ -257,11 +302,11 @@
                             <StackPanel Spacing="4" IsVisible="{Binding IsCustomDateFilter}">
                                 <Grid ColumnDefinitions="*, 12, *">
                                     <StackPanel Grid.Column="0" Spacing="4">
-                                        <TextBlock Text="Start Date" Foreground="#94A3B8" FontSize="11" FontWeight="SemiBold"/>
+                                        <TextBlock Text="Start Date" Foreground="{DynamicResource TextSecondary}" FontSize="11" FontWeight="SemiBold"/>
                                         <CalendarDatePicker SelectedDate="{Binding CustomStartDate, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="32" VerticalContentAlignment="Center"/>
                                     </StackPanel>
                                     <StackPanel Grid.Column="2" Spacing="4">
-                                        <TextBlock Text="End Date" Foreground="#94A3B8" FontSize="11" FontWeight="SemiBold"/>
+                                        <TextBlock Text="End Date" Foreground="{DynamicResource TextSecondary}" FontSize="11" FontWeight="SemiBold"/>
                                         <CalendarDatePicker SelectedDate="{Binding CustomEndDate, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="32" VerticalContentAlignment="Center"/>
                                     </StackPanel>
                                 </Grid>
@@ -279,9 +324,9 @@
                                   CanUserReorderColumns="True"
                                   Height="320"
                                   RowHeight="38"
-                                  BorderBrush="#334155"
+                                  BorderBrush="{DynamicResource BorderSlate}"
                                   BorderThickness="1"
-                                  Background="#0F172A">
+                                  Background="{DynamicResource BgAppDark}">
                             <DataGrid.Columns>
                                 <DataGridTextColumn x:DataType="models:SaleRecord" Header="Date" Binding="{Binding TransactionDate, StringFormat='\{0:yyyy-MM-dd}'}" Width="Auto" MinWidth="110" CanUserSort="True" SortMemberPath="TransactionDate"/>
                                 <DataGridTextColumn x:DataType="models:SaleRecord" Header="Invoice / Order Code" Binding="{Binding InvoiceNumber}" Width="Auto" MinWidth="150" CanUserSort="True" SortMemberPath="InvoiceNumber"/>
@@ -299,21 +344,21 @@
                                                 <Button Command="{Binding $parent[DataGrid].((vm:LedgerDashboardViewModel)DataContext).EditSaleCommand}"
                                                         CommandParameter="{Binding}"
                                                         ToolTip.Tip="Edit Transaction"
-                                                        Background="#334155" Padding="6,2" CornerRadius="4" BorderThickness="0" Height="26" Width="26" VerticalContentAlignment="Center" HorizontalContentAlignment="Center">
+                                                        Background="{DynamicResource BorderSlate}" Padding="6,2" CornerRadius="4" BorderThickness="0" Height="26" Width="26" VerticalContentAlignment="Center" HorizontalContentAlignment="Center">
                                                     <TextBlock Text="✎" Foreground="White" FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                                                 </Button>
                                                 <!-- Process Return Button -->
                                                 <Button Command="{Binding $parent[DataGrid].((vm:LedgerDashboardViewModel)DataContext).ProcessReturnCommand}"
                                                         CommandParameter="{Binding}"
                                                         ToolTip.Tip="Process Return"
-                                                        Background="#B91C1C" Padding="6,2" CornerRadius="4" BorderThickness="0" Height="26" Width="26" VerticalContentAlignment="Center" HorizontalContentAlignment="Center">
+                                                        Background="{DynamicResource AccentRedHover}" Padding="6,2" CornerRadius="4" BorderThickness="0" Height="26" Width="26" VerticalContentAlignment="Center" HorizontalContentAlignment="Center">
                                                     <TextBlock Text="↶" Foreground="White" FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                                                 </Button>
                                                 <!-- Delete Button -->
                                                 <Button Command="{Binding $parent[DataGrid].((vm:LedgerDashboardViewModel)DataContext).DeleteSaleCommand}"
                                                         CommandParameter="{Binding}"
                                                         ToolTip.Tip="Delete Transaction"
-                                                        Background="#EF4444" Padding="6,2" CornerRadius="4" BorderThickness="0" Height="26" Width="26" VerticalContentAlignment="Center" HorizontalContentAlignment="Center">
+                                                        Background="{DynamicResource AccentRed}" Padding="6,2" CornerRadius="4" BorderThickness="0" Height="26" Width="26" VerticalContentAlignment="Center" HorizontalContentAlignment="Center">
                                                     <TextBlock Text="✕" Foreground="White" FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                                                 </Button>
                                             </StackPanel>
@@ -328,25 +373,25 @@
         </ScrollViewer>
 
         <!-- DIALOG OVERLAY: Add / Edit Transaction -->
-        <Grid Background="#B00F172A" IsVisible="{Binding IsSaleDialogVisible}">
-            <Border Background="#1E293B" BorderBrush="#334155" BorderThickness="1" CornerRadius="12" Padding="24" Width="480" VerticalAlignment="Center" HorizontalAlignment="Center">
+        <Grid Background="{DynamicResource BgOverlay}" IsVisible="{Binding IsSaleDialogVisible}">
+            <Border Background="{DynamicResource BgCardDark}" BorderBrush="{DynamicResource BorderSlate}" BorderThickness="1" CornerRadius="12" Padding="24" Width="480" VerticalAlignment="Center" HorizontalAlignment="Center">
                 <StackPanel Spacing="16">
-                    <TextBlock Text="{Binding DialogTitle}" FontSize="18" FontWeight="Bold" Foreground="White"/>
+                    <TextBlock Text="{Binding DialogTitle}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
                     
                     <!-- Form fields -->
                     <Grid ColumnDefinitions="*, 12, *">
                         <StackPanel Grid.Column="0" Spacing="4">
-                            <TextBlock Text="{Binding InvoiceLabel}" Foreground="#E2E8F0" FontSize="11"/>
+                            <TextBlock Text="{Binding InvoiceLabel}" Foreground="{DynamicResource TextPrimary}" FontSize="11"/>
                             <TextBox Text="{Binding InvoiceNumber, Mode=TwoWay}" PlaceholderText="{Binding InvoicePlaceholder}" Height="36" VerticalContentAlignment="Center"/>
                         </StackPanel>
                         <StackPanel Grid.Column="2" Spacing="4">
-                            <TextBlock Text="SKU / Item code" Foreground="#E2E8F0" FontSize="11"/>
+                            <TextBlock Text="SKU / Item code" Foreground="{DynamicResource TextPrimary}" FontSize="11"/>
                             <TextBox Text="{Binding Sku, Mode=TwoWay}" PlaceholderText="e.g. SKU-880" Height="36" VerticalContentAlignment="Center"/>
                         </StackPanel>
                     </Grid>
 
                     <StackPanel Spacing="4">
-                        <TextBlock Text="Product Name" Foreground="#E2E8F0" FontSize="11"/>
+                        <TextBlock Text="Product Name" Foreground="{DynamicResource TextPrimary}" FontSize="11"/>
                         <TextBox Text="{Binding ProductName, Mode=TwoWay}" PlaceholderText="e.g. Sony Alpha 7 IV" Height="36" VerticalContentAlignment="Center"/>
                     </StackPanel>
 
@@ -354,28 +399,28 @@
                         <Panel Grid.Column="0">
                             <!-- Category (Standard / eBay) -->
                             <StackPanel Spacing="4" IsVisible="{Binding ShowCategory}">
-                                <TextBlock Text="Category" Foreground="#E2E8F0" FontSize="11"/>
+                                <TextBlock Text="Category" Foreground="{DynamicResource TextPrimary}" FontSize="11"/>
                                 <ComboBox ItemsSource="{Binding Categories}" SelectedItem="{Binding Category, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="36"/>
                             </StackPanel>
                             <!-- Warranty Brand (Warranty) -->
                             <StackPanel Spacing="4" IsVisible="{Binding ShowWarranty}">
-                                <TextBlock Text="Warranty Brand" Foreground="#E2E8F0" FontSize="11"/>
+                                <TextBlock Text="Warranty Brand" Foreground="{DynamicResource TextPrimary}" FontSize="11"/>
                                 <ComboBox ItemsSource="{Binding WarrantyTypes}" SelectedItem="{Binding WarrantyTypeName, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="36"/>
                             </StackPanel>
                         </Panel>
                         <StackPanel Grid.Column="2" Spacing="4">
-                            <TextBlock Text="Sale Price" Foreground="#E2E8F0" FontSize="11"/>
+                            <TextBlock Text="Sale Price" Foreground="{DynamicResource TextPrimary}" FontSize="11"/>
                             <NumericUpDown Value="{Binding SalePrice, Mode=TwoWay}" Minimum="0" FormatString="C2" Height="36"/>
                         </StackPanel>
                     </Grid>
 
                     <Grid ColumnDefinitions="*, 12, *">
                         <StackPanel Grid.Column="0" Spacing="4">
-                            <TextBlock Text="Transaction Date" Foreground="#E2E8F0" FontSize="11"/>
+                            <TextBlock Text="Transaction Date" Foreground="{DynamicResource TextPrimary}" FontSize="11"/>
                             <CalendarDatePicker SelectedDate="{Binding TransactionDate, Mode=TwoWay}" Height="36" HorizontalAlignment="Stretch" VerticalContentAlignment="Center"/>
                         </StackPanel>
                         <StackPanel Grid.Column="2" Spacing="4">
-                            <TextBlock Text="Sale Category Type" Foreground="#E2E8F0" FontSize="11"/>
+                            <TextBlock Text="Sale Category Type" Foreground="{DynamicResource TextPrimary}" FontSize="11"/>
                             <ComboBox SelectedIndex="{Binding SelectedRecordTypeIndex, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="36">
                                 <ComboBoxItem Content="Standard Sale"/>
                                 <ComboBoxItem Content="Warranty Sale"/>
@@ -387,66 +432,96 @@
                     <!-- Standard / eBay Sale Conditional Fields -->
                     <StackPanel Spacing="6" IsVisible="{Binding ShowUsedGear}">
                         <CheckBox IsChecked="{Binding IsUsedGear, Mode=TwoWay}">
-                            <TextBlock Text="Is Used Equipment" Foreground="#E2E8F0" FontSize="12"/>
+                            <TextBlock Text="Is Used Equipment" Foreground="{DynamicResource TextPrimary}" FontSize="12"/>
                         </CheckBox>
                     </StackPanel>
 
                     <!-- Warranty Sale Conditional Fields -->
                     <StackPanel Spacing="12" IsVisible="{Binding ShowWarranty}">
                         <StackPanel Spacing="4">
-                            <TextBlock Text="Manufacturer Wholesale Price" Foreground="#E2E8F0" FontSize="11"/>
+                            <TextBlock Text="Manufacturer Wholesale Price" Foreground="{DynamicResource TextPrimary}" FontSize="11"/>
                             <NumericUpDown Value="{Binding ManufacturerPrice, Mode=TwoWay}" Minimum="0" FormatString="C2" Height="36"/>
                         </StackPanel>
                     </StackPanel>
 
                     <!-- Buttons -->
                     <Grid ColumnDefinitions="*, 12, *" Margin="0,12,0,0">
-                        <Button Grid.Column="0" Content="Cancel" Command="{Binding CloseSaleDialogCommand}" Background="#334155" Foreground="White" Height="36" VerticalContentAlignment="Center" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" CornerRadius="6"/>
-                        <Button Grid.Column="2" Content="Save Entry" Command="{Binding SaveSaleCommand}" Background="#3B82F6" Foreground="White" Height="36" VerticalContentAlignment="Center" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" CornerRadius="6" FontWeight="SemiBold"/>
+                        <Button Grid.Column="0" Content="Cancel" Command="{Binding CloseSaleDialogCommand}" Background="{DynamicResource BorderSlate}" Foreground="White" Height="36" VerticalContentAlignment="Center" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" CornerRadius="6">
+                            <Button.Styles>
+                                <Style Selector="Button:pointerover">
+                                    <Setter Property="Background" Value="{DynamicResource TextMuted}"/>
+                                </Style>
+                            </Button.Styles>
+                        </Button>
+                        <Button Grid.Column="2" Content="Save Entry" Command="{Binding SaveSaleCommand}" Background="{DynamicResource AccentBlue}" Foreground="White" Height="36" VerticalContentAlignment="Center" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" CornerRadius="6" FontWeight="SemiBold">
+                            <Button.Styles>
+                                <Style Selector="Button:pointerover">
+                                    <Setter Property="Background" Value="{DynamicResource AccentBlueHover}"/>
+                                </Style>
+                            </Button.Styles>
+                        </Button>
                     </Grid>
                 </StackPanel>
             </Border>
         </Grid>
 
         <!-- DIALOG OVERLAY: Period Close -->
-        <Grid Background="#B00F172A" IsVisible="{Binding IsPeriodCloseVisible}">
-            <Border Background="#1E293B" BorderBrush="#334155" BorderThickness="1" CornerRadius="12" Padding="24" Width="400" VerticalAlignment="Center" HorizontalAlignment="Center">
+        <Grid Background="{DynamicResource BgOverlay}" IsVisible="{Binding IsPeriodCloseVisible}">
+            <Border Background="{DynamicResource BgCardDark}" BorderBrush="{DynamicResource BorderSlate}" BorderThickness="1" CornerRadius="12" Padding="24" Width="400" VerticalAlignment="Center" HorizontalAlignment="Center">
                 <StackPanel Spacing="16">
-                    <TextBlock Text="Finalize Pay Period" FontSize="18" FontWeight="Bold" Foreground="White"/>
-                    <TextBlock Text="This action will freeze all pending transactions, locks their status to Paid, and compiles the QuestPDF payout statement. This action cannot be undone." FontSize="12" Foreground="#94A3B8" TextWrapping="Wrap"/>
+                    <TextBlock Text="Finalize Pay Period" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
+                    <TextBlock Text="This action will freeze all pending transactions, locks their status to Paid, and compiles the QuestPDF payout statement. This action cannot be undone." FontSize="12" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"/>
                     
                     <StackPanel Spacing="4">
-                        <TextBlock Text="Report Submission Name" Foreground="#E2E8F0" FontSize="11"/>
+                        <TextBlock Text="Report Submission Name" Foreground="{DynamicResource TextPrimary}" FontSize="11"/>
                         <TextBox Text="{Binding PeriodReportName, Mode=TwoWay}" PlaceholderText="e.g. May 2026 Submission" Height="36" VerticalContentAlignment="Center"/>
                     </StackPanel>
 
                     <Grid ColumnDefinitions="*, 12, *" Margin="0,8,0,0">
-                        <Button Grid.Column="0" Content="Cancel" Command="{Binding ClosePeriodCloseDialogCommand}" Background="#334155" Foreground="White" Height="36" VerticalContentAlignment="Center" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" CornerRadius="6"/>
-                        <Button Grid.Column="2" Content="Execute Close" Command="{Binding ExecutePeriodCloseCommand}" Background="#10B981" Foreground="White" Height="36" VerticalContentAlignment="Center" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" CornerRadius="6" FontWeight="SemiBold"/>
+                        <Button Grid.Column="0" Content="Cancel" Command="{Binding ClosePeriodCloseDialogCommand}" Background="{DynamicResource BorderSlate}" Foreground="White" Height="36" VerticalContentAlignment="Center" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" CornerRadius="6">
+                            <Button.Styles>
+                                <Style Selector="Button:pointerover">
+                                    <Setter Property="Background" Value="{DynamicResource TextMuted}"/>
+                                </Style>
+                            </Button.Styles>
+                        </Button>
+                        <Button Grid.Column="2" Content="Execute Close" Command="{Binding ExecutePeriodCloseCommand}" Background="{DynamicResource AccentGreen}" Foreground="White" Height="36" VerticalContentAlignment="Center" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" CornerRadius="6" FontWeight="SemiBold">
+                            <Button.Styles>
+                                <Style Selector="Button:pointerover">
+                                    <Setter Property="Background" Value="{DynamicResource AccentGreenHover}"/>
+                                </Style>
+                            </Button.Styles>
+                        </Button>
                     </Grid>
                 </StackPanel>
             </Border>
         </Grid>
 
         <!-- DIALOG OVERLAY: CSV Import Wizard -->
-        <Grid Background="#B00F172A" IsVisible="{Binding IsImportDialogVisible}">
-            <Border Background="#1E293B" BorderBrush="#334155" BorderThickness="1" CornerRadius="12" Padding="24" Width="520" VerticalAlignment="Center" HorizontalAlignment="Center">
+        <Grid Background="{DynamicResource BgOverlay}" IsVisible="{Binding IsImportDialogVisible}">
+            <Border Background="{DynamicResource BgCardDark}" BorderBrush="{DynamicResource BorderSlate}" BorderThickness="1" CornerRadius="12" Padding="24" Width="520" VerticalAlignment="Center" HorizontalAlignment="Center">
                 <StackPanel Spacing="16">
-                    <TextBlock Text="Import CSV Spiff Sheet" FontSize="18" FontWeight="Bold" Foreground="White"/>
-                    <TextBlock Text="Import transaction data from a CSV spiff sheet. Choose a file, select columns mapping, and insert records." FontSize="11" Foreground="#94A3B8" TextWrapping="Wrap"/>
+                    <TextBlock Text="Import CSV Spiff Sheet" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
+                    <TextBlock Text="Import transaction data from a CSV spiff sheet. Choose a file, select columns mapping, and insert records." FontSize="11" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"/>
                     
                     <!-- File browser row -->
                     <StackPanel Spacing="4">
-                        <TextBlock Text="CSV File Path" Foreground="#E2E8F0" FontSize="11"/>
+                        <TextBlock Text="CSV File Path" Foreground="{DynamicResource TextPrimary}" FontSize="11"/>
                         <Grid ColumnDefinitions="*, 8, Auto">
                             <TextBox Text="{Binding CsvFilePath}" IsReadOnly="True" PlaceholderText="Select file..." Height="36" VerticalContentAlignment="Center"/>
-                            <Button Grid.Column="2" Content="Browse..." Command="{Binding BrowseCsvFileCommand}" Background="#334155" Foreground="White" Height="36" VerticalContentAlignment="Center" Padding="12,0"/>
+                            <Button Grid.Column="2" Content="Browse..." Command="{Binding BrowseCsvFileCommand}" Background="{DynamicResource BorderSlate}" Foreground="White" Height="36" VerticalContentAlignment="Center" Padding="12,0">
+                                <Button.Styles>
+                                    <Style Selector="Button:pointerover">
+                                        <Setter Property="Background" Value="{DynamicResource TextMuted}"/>
+                                    </Style>
+                                </Button.Styles>
+                            </Button>
                         </Grid>
                     </StackPanel>
 
                     <!-- Import Mode -->
                     <StackPanel Spacing="4">
-                        <TextBlock Text="Import Records As:" Foreground="#E2E8F0" FontSize="11"/>
+                        <TextBlock Text="Import Records As:" Foreground="{DynamicResource TextPrimary}" FontSize="11"/>
                         <ComboBox SelectedItem="{Binding ImportAsType, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="36" VerticalContentAlignment="Center">
                             <ComboBox.Items>
                                 <x:String>Standard</x:String>
@@ -458,38 +533,38 @@
 
                     <!-- Map columns panel (visible if a file has headers loaded) -->
                     <StackPanel Spacing="12" IsVisible="{Binding CsvHeaders.Count}">
-                        <TextBlock Text="Column Mapping" Foreground="White" FontSize="13" FontWeight="Bold" Margin="0,4,0,0"/>
+                        <TextBlock Text="Column Mapping" Foreground="{DynamicResource TextPrimary}" FontSize="13" FontWeight="Bold" Margin="0,4,0,0"/>
 
                         <!-- Basic fields mapping grid -->
                         <Grid ColumnDefinitions="*, 12, *">
                             <StackPanel Grid.Column="0" Spacing="4">
-                                <TextBlock Text="Date Column" Foreground="#E2E8F0" FontSize="10"/>
+                                <TextBlock Text="Date Column" Foreground="{DynamicResource TextPrimary}" FontSize="10"/>
                                 <ComboBox ItemsSource="{Binding CsvHeaders}" SelectedItem="{Binding SelectedDateHeader, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="32"/>
                             </StackPanel>
                             <StackPanel Grid.Column="2" Spacing="4">
-                                <TextBlock Text="Invoice / Receipt" Foreground="#E2E8F0" FontSize="10"/>
+                                <TextBlock Text="Invoice / Receipt" Foreground="{DynamicResource TextPrimary}" FontSize="10"/>
                                 <ComboBox ItemsSource="{Binding CsvHeaders}" SelectedItem="{Binding SelectedInvoiceHeader, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="32"/>
                             </StackPanel>
                         </Grid>
 
                         <Grid ColumnDefinitions="*, 12, *">
                             <StackPanel Grid.Column="0" Spacing="4">
-                                <TextBlock Text="Product SKU" Foreground="#E2E8F0" FontSize="10"/>
+                                <TextBlock Text="Product SKU" Foreground="{DynamicResource TextPrimary}" FontSize="10"/>
                                 <ComboBox ItemsSource="{Binding CsvHeaders}" SelectedItem="{Binding SelectedSkuHeader, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="32"/>
                             </StackPanel>
                             <StackPanel Grid.Column="2" Spacing="4">
-                                <TextBlock Text="Product Name" Foreground="#E2E8F0" FontSize="10"/>
+                                <TextBlock Text="Product Name" Foreground="{DynamicResource TextPrimary}" FontSize="10"/>
                                 <ComboBox ItemsSource="{Binding CsvHeaders}" SelectedItem="{Binding SelectedProductNameHeader, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="32"/>
                             </StackPanel>
                         </Grid>
 
                         <Grid ColumnDefinitions="*, 12, *">
                             <StackPanel Grid.Column="0" Spacing="4" IsVisible="{Binding IsStandardOrEbayImport}">
-                                <TextBlock Text="Category" Foreground="#E2E8F0" FontSize="10"/>
+                                <TextBlock Text="Category" Foreground="{DynamicResource TextPrimary}" FontSize="10"/>
                                 <ComboBox ItemsSource="{Binding CsvHeaders}" SelectedItem="{Binding SelectedCategoryHeader, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="32"/>
                             </StackPanel>
                             <StackPanel Grid.Column="2" Spacing="4">
-                                <TextBlock Text="Sale Price" Foreground="#E2E8F0" FontSize="10"/>
+                                <TextBlock Text="Sale Price" Foreground="{DynamicResource TextPrimary}" FontSize="10"/>
                                 <ComboBox ItemsSource="{Binding CsvHeaders}" SelectedItem="{Binding SelectedPriceHeader, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="32"/>
                             </StackPanel>
                         </Grid>
@@ -498,16 +573,16 @@
                         <StackPanel Spacing="8" IsVisible="{Binding IsStandardOrEbayImport}">
                             <Grid ColumnDefinitions="*, 12, *">
                                 <StackPanel Grid.Column="0" Spacing="4">
-                                    <TextBlock Text="Is Used Gear Column" Foreground="#E2E8F0" FontSize="10"/>
+                                    <TextBlock Text="Is Used Gear Column" Foreground="{DynamicResource TextPrimary}" FontSize="10"/>
                                     <ComboBox ItemsSource="{Binding CsvHeaders}" SelectedItem="{Binding SelectedIsUsedHeader, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="32"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="2" Spacing="4">
-                                    <TextBlock Text="Default Category Fallback" Foreground="#E2E8F0" FontSize="10"/>
+                                    <TextBlock Text="Default Category Fallback" Foreground="{DynamicResource TextPrimary}" FontSize="10"/>
                                     <ComboBox ItemsSource="{Binding Categories}" SelectedItem="{Binding DefaultCategory, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="32"/>
                                 </StackPanel>
                             </Grid>
                             <CheckBox IsChecked="{Binding AllStandardAreUsed, Mode=TwoWay}">
-                                <TextBlock Text="Treat all imports as USED unless marked new" Foreground="#94A3B8" FontSize="10"/>
+                                <TextBlock Text="Treat all imports as USED unless marked new" Foreground="{DynamicResource TextSecondary}" FontSize="10"/>
                             </CheckBox>
                         </StackPanel>
 
@@ -515,16 +590,16 @@
                         <StackPanel Spacing="8" IsVisible="{Binding IsWarrantyImport}">
                             <Grid ColumnDefinitions="*, 12, *">
                                 <StackPanel Grid.Column="0" Spacing="4">
-                                    <TextBlock Text="Warranty Type Column" Foreground="#E2E8F0" FontSize="10"/>
+                                    <TextBlock Text="Warranty Type Column" Foreground="{DynamicResource TextPrimary}" FontSize="10"/>
                                     <ComboBox ItemsSource="{Binding CsvHeaders}" SelectedItem="{Binding SelectedWarrantyTypeHeader, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="32"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="2" Spacing="4">
-                                    <TextBlock Text="Wholesale Price Column" Foreground="#E2E8F0" FontSize="10"/>
+                                    <TextBlock Text="Wholesale Price Column" Foreground="{DynamicResource TextPrimary}" FontSize="10"/>
                                     <ComboBox ItemsSource="{Binding CsvHeaders}" SelectedItem="{Binding SelectedWholesalePriceHeader, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="32"/>
                                 </StackPanel>
                             </Grid>
                             <StackPanel Spacing="4">
-                                <TextBlock Text="Default Warranty Fallback" Foreground="#E2E8F0" FontSize="10"/>
+                                <TextBlock Text="Default Warranty Fallback" Foreground="{DynamicResource TextPrimary}" FontSize="10"/>
                                 <ComboBox ItemsSource="{Binding WarrantyTypes}" SelectedItem="{Binding DefaultWarrantyType, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="32"/>
                             </StackPanel>
                         </StackPanel>
@@ -532,8 +607,20 @@
 
                     <!-- Import Actions -->
                     <Grid ColumnDefinitions="*, 12, *" Margin="0,12,0,0">
-                        <Button Grid.Column="0" Content="Cancel" Command="{Binding CloseImportDialogCommand}" Background="#334155" Foreground="White" Height="36" VerticalContentAlignment="Center" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" CornerRadius="6"/>
-                        <Button Grid.Column="2" Content="Process Import" Command="{Binding ExecuteCsvImportCommand}" Background="#8B5CF6" Foreground="White" Height="36" VerticalContentAlignment="Center" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" CornerRadius="6" FontWeight="SemiBold" IsEnabled="{Binding CsvHeaders.Count}"/>
+                        <Button Grid.Column="0" Content="Cancel" Command="{Binding CloseImportDialogCommand}" Background="{DynamicResource BorderSlate}" Foreground="White" Height="36" VerticalContentAlignment="Center" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" CornerRadius="6">
+                            <Button.Styles>
+                                <Style Selector="Button:pointerover">
+                                    <Setter Property="Background" Value="{DynamicResource TextMuted}"/>
+                                </Style>
+                            </Button.Styles>
+                        </Button>
+                        <Button Grid.Column="2" Content="Process Import" Command="{Binding ExecuteCsvImportCommand}" Background="{DynamicResource AccentPurple}" Foreground="White" Height="36" VerticalContentAlignment="Center" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" CornerRadius="6" FontWeight="SemiBold" IsEnabled="{Binding CsvHeaders.Count}">
+                            <Button.Styles>
+                                <Style Selector="Button:pointerover">
+                                    <Setter Property="Background" Value="{DynamicResource AccentPurpleHover}"/>
+                                </Style>
+                            </Button.Styles>
+                        </Button>
                     </Grid>
                 </StackPanel>
             </Border>

@@ -10,20 +10,21 @@
         Title="Sales Ledger &amp; Commission Canvas"
         Width="1280" Height="800"
         WindowStartupLocation="CenterScreen"
-        Background="#0F172A"> <!-- Tailwind slate-900 background -->
+        Background="{DynamicResource BgAppDark}"
+        FontFamily="{DynamicResource FontPrimary}">
 
     <Grid RowDefinitions="Auto, *">
         <!-- Top Navigation Header -->
-        <Border Grid.Row="0" Background="#1E293B" BorderBrush="#334155" BorderThickness="0,0,0,1" Height="64">
+        <Border Grid.Row="0" Background="{DynamicResource BgCardDark}" BorderBrush="{DynamicResource BorderSlate}" BorderThickness="0,0,0,1" Height="64">
             <Grid ColumnDefinitions="*, Auto" Margin="24,0">
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="12">
                     <!-- Logo / Brand icon -->
-                    <Border Background="#3B82F6" Width="36" Height="36" CornerRadius="8">
+                    <Border Background="{DynamicResource AccentBlue}" Width="36" Height="36" CornerRadius="8">
                         <TextBlock Text="S" Foreground="White" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                     <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="Sales Ledger &amp; Analytics Canvas" Foreground="#F8FAFC" FontSize="16" FontWeight="SemiBold"/>
-                        <TextBlock Text="High-Performance Desktop Ledger" Foreground="#94A3B8" FontSize="11"/>
+                        <TextBlock Text="Sales Ledger &amp; Analytics Canvas" Foreground="{DynamicResource TextPrimary}" FontSize="16" FontWeight="SemiBold"/>
+                        <TextBlock Text="High-Performance Desktop Ledger" Foreground="{DynamicResource TextSecondary}" FontSize="11"/>
                     </StackPanel>
                 </StackPanel>
                 
@@ -31,7 +32,7 @@
                 <Button Grid.Column="1" 
                         Content="{Binding SettingsButtonText}" 
                         Command="{Binding ToggleWorkspaceCommand}" 
-                        Background="#3B82F6" 
+                        Background="{DynamicResource AccentBlue}" 
                         Foreground="White"
                         FontWeight="SemiBold"
                         Padding="16,8" 
@@ -39,7 +40,7 @@
                         BorderThickness="0">
                     <Button.Styles>
                         <Style Selector="Button:pointerover">
-                            <Setter Property="Background" Value="#2563EB"/>
+                            <Setter Property="Background" Value="{DynamicResource AccentBlueHover}"/>
                         </Style>
                     </Button.Styles>
                 </Button>
@@ -60,12 +61,12 @@
 
         <!-- Global Update Overlay Dialog -->
         <Grid Grid.Row="0" Grid.RowSpan="2"
-              Background="#D0020617"
+              Background="{DynamicResource BgOverlay}"
               IsVisible="{Binding IsUpdateDialogVisible}"
               HorizontalAlignment="Stretch"
               VerticalAlignment="Stretch">
-            <Border Background="#1E293B"
-                    BorderBrush="#334155"
+            <Border Background="{DynamicResource BgCardDark}"
+                    BorderBrush="{DynamicResource BorderSlate}"
                     BorderThickness="1.5"
                     CornerRadius="12"
                     Width="440"
@@ -76,18 +77,18 @@
                 <StackPanel Spacing="24">
                     <!-- Header -->
                     <StackPanel Orientation="Horizontal" Spacing="16">
-                        <Border Background="#3B82F6" Width="44" Height="44" CornerRadius="22">
+                        <Border Background="{DynamicResource AccentBlue}" Width="44" Height="44" CornerRadius="22">
                             <TextBlock Text="↓" Foreground="White" FontSize="26" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,4"/>
                         </Border>
                         <StackPanel VerticalAlignment="Center" Spacing="2">
-                            <TextBlock Text="Software Update" Foreground="#F8FAFC" FontSize="18" FontWeight="Bold"/>
-                            <TextBlock Text="A new version is ready to install" Foreground="#94A3B8" FontSize="12"/>
+                            <TextBlock Text="Software Update" Foreground="{DynamicResource TextPrimary}" FontSize="18" FontWeight="Bold"/>
+                            <TextBlock Text="A new version is ready to install" Foreground="{DynamicResource TextSecondary}" FontSize="12"/>
                         </StackPanel>
                     </StackPanel>
 
                     <!-- Message -->
                     <TextBlock Text="{Binding UpdateMessageText}" 
-                               Foreground="#E2E8F0" 
+                               Foreground="{DynamicResource TextPrimary}" 
                                FontSize="14" 
                                TextWrapping="Wrap" 
                                LineHeight="22"/>
@@ -98,8 +99,8 @@
                                 Content="Not Now" 
                                 Command="{Binding CloseUpdateDialogCommand}" 
                                 IsEnabled="{Binding IsNotUpdateInstalling}"
-                                Background="#334155" 
-                                Foreground="#E2E8F0"
+                                Background="{DynamicResource BorderSlate}" 
+                                Foreground="{DynamicResource TextPrimary}"
                                 FontWeight="SemiBold"
                                 HorizontalAlignment="Stretch"
                                 HorizontalContentAlignment="Center"
@@ -108,7 +109,7 @@
                                 BorderThickness="0">
                             <Button.Styles>
                                 <Style Selector="Button:pointerover">
-                                    <Setter Property="Background" Value="#475569"/>
+                                    <Setter Property="Background" Value="{DynamicResource TextMuted}"/>
                                 </Style>
                             </Button.Styles>
                         </Button>
@@ -116,7 +117,7 @@
                                 Content="Install &amp; Restart" 
                                 Command="{Binding InstallUpdateCommand}" 
                                 IsEnabled="{Binding IsNotUpdateInstalling}"
-                                Background="#3B82F6" 
+                                Background="{DynamicResource AccentBlue}" 
                                 Foreground="White"
                                 FontWeight="SemiBold"
                                 HorizontalAlignment="Stretch"
@@ -126,7 +127,7 @@
                                 BorderThickness="0">
                             <Button.Styles>
                                 <Style Selector="Button:pointerover">
-                                    <Setter Property="Background" Value="#2563EB"/>
+                                    <Setter Property="Background" Value="{DynamicResource AccentBlueHover}"/>
                                 </Style>
                             </Button.Styles>
                         </Button>

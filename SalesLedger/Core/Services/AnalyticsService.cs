@@ -21,6 +21,13 @@ namespace SalesLedger.Core.Services
         public double Commission { get; set; }
     }
 
+    public class TypeMetric
+    {
+        public double Revenue { get; set; }
+        public double Quantity { get; set; }
+        public double Commission { get; set; }
+    }
+
     public class TrendBucket
     {
         public DateTime PeriodStart { get; set; }
@@ -30,6 +37,10 @@ namespace SalesLedger.Core.Services
         public double TotalCommission { get; set; }
         public double MaxSalePrice { get; set; }
         public Dictionary<string, CategoryMetric> CategoryBreakdown { get; set; } = new();
+        public TypeMetric StandardMetric { get; set; } = new();
+        public TypeMetric EbayMetric { get; set; } = new();
+        public TypeMetric WarrantyMetric { get; set; } = new();
+        public TypeMetric ReturnOffsetMetric { get; set; } = new();
     }
 
     public class AnalyticsService
@@ -117,6 +128,22 @@ namespace SalesLedger.Core.Services
             cmd.CommandText = $@"
                 SELECT 
                     date_trunc('{scale}', TransactionDate) AS BucketDate,
+                    COALESCE(SUM(CASE WHEN RecordType = 'Standard' THEN SalePrice ELSE 0.0 END), 0.0) AS StandardRevenue,
+                    COALESCE(SUM(CASE WHEN RecordType = 'Standard' THEN 1 ELSE 0 END), 0) AS StandardQuantity,
+                    COALESCE(SUM(CASE WHEN RecordType = 'Standard' THEN CalculatedCommission ELSE 0.0 END), 0.0) AS StandardCommission,
+
+                    COALESCE(SUM(CASE WHEN RecordType = 'Ebay' THEN SalePrice ELSE 0.0 END), 0.0) AS EbayRevenue,
+                    COALESCE(SUM(CASE WHEN RecordType = 'Ebay' THEN 1 ELSE 0 END), 0) AS EbayQuantity,
+                    COALESCE(SUM(CASE WHEN RecordType = 'Ebay' THEN CalculatedCommission ELSE 0.0 END), 0.0) AS EbayCommission,
+
+                    COALESCE(SUM(CASE WHEN RecordType = 'Warranty' THEN SalePrice ELSE 0.0 END), 0.0) AS WarrantyRevenue,
+                    COALESCE(SUM(CASE WHEN RecordType = 'Warranty' THEN 1 ELSE 0 END), 0) AS WarrantyQuantity,
+                    COALESCE(SUM(CASE WHEN RecordType = 'Warranty' THEN CalculatedCommission ELSE 0.0 END), 0.0) AS WarrantyCommission,
+
+                    COALESCE(SUM(CASE WHEN RecordType = 'ReturnOffset' THEN SalePrice ELSE 0.0 END), 0.0) AS ReturnRevenue,
+                    COALESCE(SUM(CASE WHEN RecordType = 'ReturnOffset' THEN 1 ELSE 0 END), 0) AS ReturnQuantity,
+                    COALESCE(SUM(CASE WHEN RecordType = 'ReturnOffset' THEN CalculatedCommission ELSE 0.0 END), 0.0) AS ReturnCommission,
+
                     COALESCE(Category, 'Uncategorized') AS CategoryName,
                     COALESCE(SUM(SalePrice), 0.0) AS Revenue,
                     COALESCE(SUM(CASE WHEN RecordType = 'Standard' OR RecordType = 'Ebay' THEN 1 WHEN RecordType = 'ReturnOffset' THEN -1 ELSE 0 END), 0) AS Quantity,
@@ -137,11 +164,27 @@ namespace SalesLedger.Core.Services
                 while (reader.Read())
                 {
                     var bucketDate = reader.GetDateTime(0);
-                    var category = reader.GetString(1);
-                    var revenue = ConvertToDouble(reader.GetValue(2));
-                    var quantity = ConvertToDouble(reader.GetValue(3));
-                    var commission = ConvertToDouble(reader.GetValue(4));
-                    var maxSale = ConvertToDouble(reader.GetValue(5));
+                    var stdRev = ConvertToDouble(reader.GetValue(1));
+                    var stdQty = ConvertToDouble(reader.GetValue(2));
+                    var stdComm = ConvertToDouble(reader.GetValue(3));
+
+                    var ebayRev = ConvertToDouble(reader.GetValue(4));
+                    var ebayQty = ConvertToDouble(reader.GetValue(5));
+                    var ebayComm = ConvertToDouble(reader.GetValue(6));
+
+                    var warRev = ConvertToDouble(reader.GetValue(7));
+                    var warQty = ConvertToDouble(reader.GetValue(8));
+                    var warComm = ConvertToDouble(reader.GetValue(9));
+
+                    var retRev = ConvertToDouble(reader.GetValue(10));
+                    var retQty = ConvertToDouble(reader.GetValue(11));
+                    var retComm = ConvertToDouble(reader.GetValue(12));
+
+                    var category = reader.GetString(13);
+                    var revenue = ConvertToDouble(reader.GetValue(14));
+                    var quantity = ConvertToDouble(reader.GetValue(15));
+                    var commission = ConvertToDouble(reader.GetValue(16));
+                    var maxSale = ConvertToDouble(reader.GetValue(17));
 
                     if (!bucketsDict.TryGetValue(bucketDate, out var bucket))
                     {
@@ -157,6 +200,22 @@ namespace SalesLedger.Core.Services
                     bucket.TotalQuantity += quantity;
                     bucket.TotalCommission += commission;
                     bucket.MaxSalePrice = Math.Max(bucket.MaxSalePrice, maxSale);
+
+                    bucket.StandardMetric.Revenue += stdRev;
+                    bucket.StandardMetric.Quantity += stdQty;
+                    bucket.StandardMetric.Commission += stdComm;
+
+                    bucket.EbayMetric.Revenue += ebayRev;
+                    bucket.EbayMetric.Quantity += ebayQty;
+                    bucket.EbayMetric.Commission += ebayComm;
+
+                    bucket.WarrantyMetric.Revenue += warRev;
+                    bucket.WarrantyMetric.Quantity += warQty;
+                    bucket.WarrantyMetric.Commission += warComm;
+
+                    bucket.ReturnOffsetMetric.Revenue += retRev;
+                    bucket.ReturnOffsetMetric.Quantity += retQty;
+                    bucket.ReturnOffsetMetric.Commission += retComm;
 
                     bucket.CategoryBreakdown[category] = new CategoryMetric
                     {

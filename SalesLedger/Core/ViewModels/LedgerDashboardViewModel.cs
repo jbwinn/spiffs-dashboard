@@ -72,16 +72,17 @@ namespace SalesLedger.Core.ViewModels
 
         private static readonly string[] CategoryColors = new[]
         {
-            "#3B82F6", // Blue
-            "#10B981", // Emerald
-            "#F59E0B", // Amber
-            "#EC4899", // Pink
-            "#8B5CF6", // Purple
-            "#6366F1", // Indigo
-            "#14B8A6", // Teal
-            "#F97316", // Orange
-            "#06B6D4", // Cyan
-            "#A855F7"  // Purple-Light
+            "#4F759B", // CS-Blue
+            "#A5CC6B", // CS-Green
+            "#F5C44C", // CS-Yellow
+            "#5D4532", // CS-Brown
+            "#7291AF", // Blues Step 1
+            "#B7D689", // Greens Step 1
+            "#F7D070", // Yellows Step 1
+            "#7D6A5B", // Browns Step 1
+            "#5C5958", // Grays Step 1
+            "#95ACC3", // Blues Step 2
+            "#705E78"  // Slate Plum (Brand complement)
         };
 
         // CSV Import Wizard Properties
@@ -377,6 +378,26 @@ namespace SalesLedger.Core.ViewModels
         }
         partial void OnCustomStartDateChanged(DateTime? value) => LoadSalesList();
         partial void OnCustomEndDateChanged(DateTime? value) => LoadSalesList();
+
+        [RelayCommand]
+        public void ResetFilters()
+        {
+            SearchText = string.Empty;
+            SelectedSaleTypeFilter = "All";
+            SelectedCategoryFilter = "All";
+            SelectedDateFilterType = "All Time";
+            HighValueSalesOnly = false;
+            CustomStartDate = DateTime.Now.AddDays(-30);
+            CustomEndDate = DateTime.Now;
+        }
+
+        public void OnSyncCompleted()
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                LoadData();
+            });
+        }
 
         // Open Dialog
         [RelayCommand]
@@ -921,6 +942,12 @@ namespace SalesLedger.Core.ViewModels
         public string TotalCommissionText => Bucket.TotalCommission.ToString("C2");
         public string HighestSaleText => Bucket.MaxSalePrice.ToString("C2");
 
+        public string StandardBreakdownText { get; }
+        public string EbayBreakdownText { get; }
+        public string WarrantyBreakdownText { get; }
+        public string ReturnOffsetBreakdownText { get; }
+        public bool HasReturnOffsets => Bucket.ReturnOffsetMetric.Quantity != 0 || Bucket.ReturnOffsetMetric.Revenue != 0;
+
         public ChartItem(TrendBucket bucket, double value, double height, string metricType)
         {
             Bucket = bucket ?? throw new ArgumentNullException(nameof(bucket));
@@ -933,6 +960,38 @@ namespace SalesLedger.Core.ViewModels
                 "Quantity" => $"{value} units",
                 "Commission" => value.ToString("C0"),
                 _ => value.ToString("N0")
+            };
+
+            StandardBreakdownText = metricType switch
+            {
+                "Revenue" => bucket.StandardMetric.Revenue.ToString("C2"),
+                "Quantity" => $"{bucket.StandardMetric.Quantity} units",
+                "Commission" => bucket.StandardMetric.Commission.ToString("C2"),
+                _ => bucket.StandardMetric.Revenue.ToString("C2")
+            };
+
+            EbayBreakdownText = metricType switch
+            {
+                "Revenue" => bucket.EbayMetric.Revenue.ToString("C2"),
+                "Quantity" => $"{bucket.EbayMetric.Quantity} units",
+                "Commission" => bucket.EbayMetric.Commission.ToString("C2"),
+                _ => bucket.EbayMetric.Revenue.ToString("C2")
+            };
+
+            WarrantyBreakdownText = metricType switch
+            {
+                "Revenue" => bucket.WarrantyMetric.Revenue.ToString("C2"),
+                "Quantity" => $"{bucket.WarrantyMetric.Quantity} units",
+                "Commission" => bucket.WarrantyMetric.Commission.ToString("C2"),
+                _ => bucket.WarrantyMetric.Revenue.ToString("C2")
+            };
+
+            ReturnOffsetBreakdownText = metricType switch
+            {
+                "Revenue" => bucket.ReturnOffsetMetric.Revenue.ToString("C2"),
+                "Quantity" => $"{bucket.ReturnOffsetMetric.Quantity} units",
+                "Commission" => bucket.ReturnOffsetMetric.Commission.ToString("C2"),
+                _ => bucket.ReturnOffsetMetric.Revenue.ToString("C2")
             };
 
             foreach (var kvp in bucket.CategoryBreakdown)

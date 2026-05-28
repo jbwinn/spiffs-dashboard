@@ -2,6 +2,7 @@ using System;
 using System.Globalization;
 using Avalonia.Data.Converters;
 using Avalonia.Media;
+using SalesLedger.Core.Theme;
 
 namespace SalesLedger.Core.Converters
 {
@@ -11,9 +12,9 @@ namespace SalesLedger.Core.Converters
         {
             if (value is bool b && b)
             {
-                return SolidColorBrush.Parse("#F8FAFC"); // Active color
+                return SolidColorBrush.Parse(AppTheme.TextPrimary); // Active color
             }
-            return SolidColorBrush.Parse("#64748B"); // Inactive color
+            return SolidColorBrush.Parse(AppTheme.TextMuted); // Inactive color
         }
 
         public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
@@ -45,9 +46,9 @@ namespace SalesLedger.Core.Converters
         {
             if (value is bool b && b)
             {
-                return SolidColorBrush.Parse("#3B82F6"); // Preset color
+                return SolidColorBrush.Parse(AppTheme.AccentBlue); // Preset color
             }
-            return SolidColorBrush.Parse("#64748B"); // Custom color
+            return SolidColorBrush.Parse(AppTheme.TextMuted); // Custom color
         }
 
         public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
@@ -148,9 +149,9 @@ namespace SalesLedger.Core.Converters
         {
             if (value is bool isError && isError)
             {
-                return SolidColorBrush.Parse("#EF4444"); // Red
+                return SolidColorBrush.Parse(AppTheme.AccentRed); // Red
             }
-            return SolidColorBrush.Parse("#10B981"); // Green
+            return SolidColorBrush.Parse(AppTheme.AccentGreen); // Green
         }
 
         public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)

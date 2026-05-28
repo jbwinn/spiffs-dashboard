@@ -6,6 +6,7 @@ using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using SalesLedger.Core.Models;
+using SalesLedger.Core.Theme;
 
 namespace SalesLedger.Core.Services
 {
@@ -32,7 +33,7 @@ namespace SalesLedger.Core.Services
                     page.Size(PageSizes.Letter);
                     page.Margin(0.5f, Unit.Inch); // Moderate margins
                     page.PageColor(Colors.White);
-                    page.DefaultTextStyle(x => x.FontFamily("Arial").FontSize(10));
+                    page.DefaultTextStyle(x => x.FontFamily(AppTheme.PrintFontPrimaryFamilies).FontSize(10).FontColor(Color.FromHex(AppTheme.PrintTextPrimary)));
 
                     // Header
                     page.Header().Element(headerContainer =>
@@ -44,12 +45,13 @@ namespace SalesLedger.Core.Services
                                 column.Item().Text("COMMISSION PAYOUT REPORT")
                                     .FontSize(18)
                                     .Bold()
-                                    .FontColor(Colors.Blue.Darken3);
+                                    .FontColor(Color.FromHex(AppTheme.PrintAccentPrimary));
 
                                 column.Item().Text($"Pay Period: {report.ReportName}")
+                                    .FontFamily(AppTheme.PrintFontSecondaryFamilies)
                                     .FontSize(12)
                                     .Bold()
-                                    .FontColor(Colors.Grey.Darken2);
+                                    .FontColor(Color.FromHex(AppTheme.PrintTextSecondary));
                             });
 
                             row.ConstantItem(200).Column(column =>
@@ -82,13 +84,13 @@ namespace SalesLedger.Core.Services
                         });
 
                         // Sales Details Table title
-                        column.Item().PaddingBottom(8).Text("Transaction Ledger Details").FontSize(14).Bold().FontColor(Colors.Blue.Darken3);
+                        column.Item().PaddingBottom(8).Text("Transaction Ledger Details").FontSize(14).Bold().FontColor(Color.FromHex(AppTheme.PrintAccentPrimary));
 
                         void RenderSection(string title, List<SaleRecord> sectionSales)
                         {
                             if (!sectionSales.Any()) return;
 
-                            column.Item().PaddingTop(12).PaddingBottom(4).Text(title).FontSize(11).Bold().FontColor(Colors.Blue.Darken2);
+                            column.Item().PaddingTop(12).PaddingBottom(4).Text(title).FontFamily(AppTheme.PrintFontSecondaryFamilies).FontSize(11).Bold().FontColor(Color.FromHex(AppTheme.PrintAccentSecondary));
 
                             column.Item().Table(table =>
                             {
@@ -163,13 +165,13 @@ namespace SalesLedger.Core.Services
         {
             container
                 .Border(1)
-                .BorderColor(Colors.Grey.Lighten2)
-                .Background(Colors.Grey.Lighten4)
+                .BorderColor(Color.FromHex(AppTheme.PrintBorder))
+                .Background(Color.FromHex(AppTheme.PrintBgCard))
                 .Padding(10)
                 .Column(col =>
                 {
-                    col.Item().Text(title).FontSize(9).FontColor(Colors.Grey.Darken1).Bold();
-                    col.Item().PaddingTop(4).Text(value).FontSize(14).Bold().FontColor(Colors.Blue.Darken3);
+                    col.Item().Text(title).FontSize(9).FontColor(Color.FromHex(AppTheme.PrintTextSecondary)).Bold();
+                    col.Item().PaddingTop(4).Text(value).FontSize(14).Bold().FontColor(Color.FromHex(AppTheme.PrintAccentPrimary));
                 });
         }
 
@@ -177,7 +179,7 @@ namespace SalesLedger.Core.Services
         {
             return container
                 .BorderBottom(1)
-                .BorderColor(Colors.Grey.Darken1)
+                .BorderColor(Color.FromHex(AppTheme.PrintTextSecondary))
                 .PaddingVertical(5)
                 .PaddingHorizontal(2);
         }
@@ -186,8 +188,8 @@ namespace SalesLedger.Core.Services
         {
             return container
                 .BorderBottom(1)
-                .BorderColor(Colors.Grey.Lighten3)
-                .Background(isAlternate ? Colors.Grey.Lighten5 : Colors.White)
+                .BorderColor(Color.FromHex(AppTheme.PrintBorder))
+                .Background(isAlternate ? Color.FromHex(AppTheme.PrintBgLight) : Colors.White)
                 .PaddingVertical(4)
                 .PaddingHorizontal(2);
         }
@@ -196,10 +198,10 @@ namespace SalesLedger.Core.Services
         {
             return container
                 .BorderTop(1)
-                .BorderColor(Colors.Grey.Darken1)
+                .BorderColor(Color.FromHex(AppTheme.PrintTextSecondary))
                 .PaddingVertical(4)
                 .PaddingHorizontal(2)
-                .Background(Colors.Grey.Lighten4);
+                .Background(Color.FromHex(AppTheme.PrintBgCard));
         }
     }
 }

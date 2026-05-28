@@ -39,10 +39,6 @@ namespace SalesLedger.Core.ViewModels
 
             // Setup channels pipeline
             Sync = new SyncPipeline(LiteDb, DuckDb);
-            Sync.Start();
-
-            // Run initial database replication check to synchronize DuckDB from LiteDB operational cache
-            Sync.QueueRebuild();
 
             // Wire domain dependencies
             PayoutService = new PayoutLedgerService(LiteDb, Sync);
@@ -55,6 +51,10 @@ namespace SalesLedger.Core.ViewModels
             SettingsViewModel = new FullScreenSettingsViewModel(this);
 
             _currentActiveWorkspace = DashboardViewModel;
+
+            // Subscribe and start the background sync pipeline
+            Sync.SyncCompleted += DashboardViewModel.OnSyncCompleted;
+            Sync.Start();
 
             // Run update check in background task
             Task.Run(CheckForApplicationUpdatesAsync);
@@ -78,6 +78,7 @@ namespace SalesLedger.Core.ViewModels
 
         public void Dispose()
         {
+            Sync.SyncCompleted -= DashboardViewModel.OnSyncCompleted;
             Sync.Stop();
             LiteDb.Dispose();
             DuckDb.Dispose();

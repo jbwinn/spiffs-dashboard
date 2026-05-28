@@ -15,12 +15,6 @@ namespace SalesLedger.Core.Services
                 return sale.CalculatedCommission;
             }
 
-            // eBay sales have a fixed commission of 10% on the sale price
-            if (sale is EbaySale)
-            {
-                return Math.Round(sale.SalePrice * 0.10m, 2);
-            }
-
             // Enforce sorting sequence matching the defined waterfall ranking hierarchy
             var waterfall = activeRules.OrderBy(r => r.PriorityOrder).ToList();
 
@@ -35,6 +29,9 @@ namespace SalesLedger.Core.Services
                         break;
                     case RuleScope.AllUsed:
                         isMatch = (sale is StandardSale standardItem && standardItem.IsUsedGear);
+                        break;
+                    case RuleScope.AllEbay:
+                        isMatch = (sale is EbaySale);
                         break;
                     case RuleScope.CategorySpecific:
                         isMatch = string.Equals(sale.Category, rule.TargetCategory, StringComparison.OrdinalIgnoreCase);

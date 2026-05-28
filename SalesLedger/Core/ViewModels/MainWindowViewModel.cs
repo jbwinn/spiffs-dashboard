@@ -93,24 +93,91 @@ namespace SalesLedger.Core.ViewModels
                     return;
                 }
 
-                // Retrieve the update source dynamically targeting GitHub Releases.
-                // Replace the repository URL with the production repository deployment target.
                 var updateSource = new GithubSource("https://github.com/jbwinn/spiffs-dashboard", null, false);
-                var updateManager = new UpdateManager(updateSource);
-                var updateInfo = await updateManager.CheckForUpdatesAsync();
+                UpdateManager = new UpdateManager(updateSource);
+                UpdateInfo = await UpdateManager.CheckForUpdatesAsync();
                 
-                if (updateInfo != null)
+                if (UpdateInfo != null)
                 {
-                    // Download update differences in the background without locking the UI thread
-                    await updateManager.DownloadUpdatesAsync(updateInfo);
-                    
-                    // Apply updates smoothly during the next application launch lifecycle
-                    updateManager.ApplyUpdatesAndExit(updateInfo);
+                    UpdateMessageText = $"A new version (v{UpdateInfo.TargetFullRelease.Version}) is available. Would you like to install it now? The application will restart automatically.";
+                    IsUpdateDialogVisible = true;
                 }
             }
             catch (Exception)
             {
                 // Fail silently to safeguard application operations if the host machine goes offline
+            }
+        }
+
+        private bool _isUpdateDialogVisible;
+        public bool IsUpdateDialogVisible
+        {
+            get => _isUpdateDialogVisible;
+            set => SetProperty(ref _isUpdateDialogVisible, value);
+        }
+
+        private string _updateMessageText = string.Empty;
+        public string UpdateMessageText
+        {
+            get => _updateMessageText;
+            set => SetProperty(ref _updateMessageText, value);
+        }
+
+        private bool _isUpdateInstalling;
+        public bool IsUpdateInstalling
+        {
+            get => _isUpdateInstalling;
+            set
+            {
+                if (SetProperty(ref _isUpdateInstalling, value))
+                {
+                    OnPropertyChanged(nameof(IsNotUpdateInstalling));
+                }
+            }
+        }
+
+        public bool IsNotUpdateInstalling => !_isUpdateInstalling;
+
+        public UpdateManager? UpdateManager { get; set; }
+        public UpdateInfo? UpdateInfo { get; set; }
+
+        private IRelayCommand? _closeUpdateDialogCommand;
+        public IRelayCommand CloseUpdateDialogCommand => 
+            _closeUpdateDialogCommand ??= new RelayCommand(() => IsUpdateDialogVisible = false);
+
+        private IAsyncRelayCommand? _installUpdateCommand;
+        public IAsyncRelayCommand InstallUpdateCommand => 
+            _installUpdateCommand ??= new AsyncRelayCommand(InstallUpdateAsync);
+
+        public async Task InstallUpdateAsync()
+        {
+            if (IsUpdateInstalling) return;
+            IsUpdateInstalling = true;
+            UpdateMessageText = "Downloading and applying update... Please wait.";
+
+            try
+            {
+                if (UpdateManager == null || UpdateInfo == null)
+                {
+                    // Mock update simulation for testing/validation of the UI
+                    await Task.Delay(2000);
+                    UpdateMessageText = "Update installed! Restarting application (Mock)...";
+                    await Task.Delay(1500);
+                    IsUpdateDialogVisible = false;
+                    IsUpdateInstalling = false;
+                }
+                else
+                {
+                    await UpdateManager.DownloadUpdatesAsync(UpdateInfo);
+                    UpdateMessageText = "Update installed! Restarting application...";
+                    await Task.Delay(1500);
+                    UpdateManager.ApplyUpdatesAndRestart(UpdateInfo);
+                }
+            }
+            catch (Exception ex)
+            {
+                UpdateMessageText = $"Update installation failed: {ex.Message}";
+                IsUpdateInstalling = false;
             }
         }
     }

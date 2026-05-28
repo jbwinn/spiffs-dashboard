@@ -67,6 +67,14 @@
                                         CornerRadius="6"
                                         IsEnabled="{Binding IsNotCheckingForUpdates}"/>
                                 
+                                <Button Content="Test Update UI" 
+                                        Command="{Binding TestUpdateUiCommand}" 
+                                        IsVisible="{Binding IsDebugMode}"
+                                        Background="#3B82F6" 
+                                        Foreground="White" 
+                                        Padding="16,8" 
+                                        CornerRadius="6"/>
+                                
                                 <TextBlock Text="{Binding UpdateStatusMessage}" 
                                            Foreground="#94A3B8" 
                                            VerticalAlignment="Center" 

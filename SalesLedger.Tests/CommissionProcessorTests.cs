@@ -31,9 +31,18 @@ namespace SalesLedger.Tests
             },
             new CommissionRule
             {
+                RuleId = "rule-ebay",
+                RuleName = "Default eBay Rule",
+                PriorityOrder = 2,
+                Scope = RuleScope.AllEbay,
+                CalculationType = PayoutType.PercentageOfPrice,
+                RuleValue = 0.10m // 10%
+            },
+            new CommissionRule
+            {
                 RuleId = "rule-cameras",
                 RuleName = "Cameras Standard Rule",
-                PriorityOrder = 2,
+                PriorityOrder = 3,
                 Scope = RuleScope.CategorySpecific,
                 TargetCategory = "Cameras",
                 CalculationType = PayoutType.PercentageOfPrice,
@@ -43,7 +52,7 @@ namespace SalesLedger.Tests
             {
                 RuleId = "rule-lenses",
                 RuleName = "Lenses Standard Rule",
-                PriorityOrder = 3,
+                PriorityOrder = 4,
                 Scope = RuleScope.CategorySpecific,
                 TargetCategory = "Lenses",
                 CalculationType = PayoutType.PercentageOfPrice,
@@ -204,7 +213,7 @@ namespace SalesLedger.Tests
                 IsUsedGear = true
             };
 
-            // Calculate even with rule list (Ebay sales should bypass rules waterfall)
+            // Calculate using the default rules waterfall (which includes the eBay rule)
             var commission = _processor.CalculateLineItem(sale, _defaultRules);
 
             // 10% of $1200 = $120

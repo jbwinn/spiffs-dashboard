@@ -39,6 +39,12 @@ namespace SalesLedger.Core.ViewModels
         public List<PayoutType> PayoutTypeOptions => Enum.GetValues<PayoutType>().ToList();
         public List<string> ActiveCategoryNames => Categories.Where(c => c.IsActive).Select(c => c.Name).ToList();
 
+#if DEBUG
+        public bool IsDebugMode => true;
+#else
+        public bool IsDebugMode => false;
+#endif
+
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(HasStatusMessage))]
         private string _statusMessage = string.Empty;
@@ -149,11 +155,11 @@ namespace SalesLedger.Core.ViewModels
 
                 if (updateInfo != null)
                 {
-                    UpdateStatusMessage = $"Update found (v{updateInfo.TargetFullRelease.Version}). Downloading...";
-                    await updateManager.DownloadUpdatesAsync(updateInfo);
-                    UpdateStatusMessage = "Update downloaded. Restarting application...";
-                    await Task.Delay(2000);
-                    updateManager.ApplyUpdatesAndExit(updateInfo);
+                    UpdateStatusMessage = $"Update found (v{updateInfo.TargetFullRelease.Version}). Dialog opened.";
+                    _mainVm.UpdateManager = updateManager;
+                    _mainVm.UpdateInfo = updateInfo;
+                    _mainVm.UpdateMessageText = $"A new version (v{updateInfo.TargetFullRelease.Version}) is available. Would you like to install it now? The application will restart automatically.";
+                    _mainVm.IsUpdateDialogVisible = true;
                 }
                 else
                 {
@@ -168,6 +174,13 @@ namespace SalesLedger.Core.ViewModels
             {
                 IsCheckingForUpdates = false;
             }
+        }
+
+        [RelayCommand]
+        public void TestUpdateUi()
+        {
+            _mainVm.UpdateMessageText = "A new version (v2.0.1-mock) is available. Would you like to install it now? The application will restart automatically.";
+            _mainVm.IsUpdateDialogVisible = true;
         }
 
         [RelayCommand]

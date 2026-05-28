@@ -6,7 +6,7 @@ namespace SalesLedger.Core.Models
     public enum SaleType { Standard, Warranty, ReturnOffset, Ebay }
     public enum PayoutStatus { Pending, Paid, ReturnedBeforePayout }
     public enum PayoutType { PercentageOfPrice, FlatRate, PercentageOfNetProfit }
-    public enum RuleScope { AllUsed, AllWarranty, CategorySpecific }
+    public enum RuleScope { AllUsed, AllWarranty, CategorySpecific, AllEbay }
 
     public abstract class SaleRecord 
     {

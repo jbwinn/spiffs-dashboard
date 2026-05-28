@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using LiteDB;
 using SalesLedger.Core.Models;
 
@@ -190,10 +191,12 @@ namespace SalesLedger.Core.Services
                 {
                     bool hasLensRule = false;
                     bool hasMirrorlessRule = false;
+                    bool hasEbayRule = false;
                     foreach (var rule in settings.ActiveRules)
                     {
                         if (rule.TargetCategory == "Lens") hasLensRule = true;
                         if (rule.TargetCategory == "Mirrorless") hasMirrorlessRule = true;
+                        if (rule.Scope == RuleScope.AllEbay) hasEbayRule = true;
 
                         // Upgrade old defaults
                         if (rule.RuleName == "Default Used Gear Rule" && rule.RuleValue == 0.15m && rule.CalculationType == PayoutType.PercentageOfPrice)
@@ -233,6 +236,67 @@ namespace SalesLedger.Core.Services
                             CalculationType = PayoutType.PercentageOfPrice,
                             RuleValue = 0.05m
                         });
+                        modified = true;
+                    }
+                    bool needsReprioritization = false;
+                    if (hasEbayRule)
+                    {
+                        var ebayRule = settings.ActiveRules.FirstOrDefault(r => r.Scope == RuleScope.AllEbay);
+                        if (ebayRule != null)
+                        {
+                            var firstCategorySpecific = settings.ActiveRules
+                                .Where(r => r.Scope == RuleScope.CategorySpecific)
+                                .OrderBy(r => r.PriorityOrder)
+                                .FirstOrDefault();
+
+                            if (firstCategorySpecific != null && firstCategorySpecific.PriorityOrder < ebayRule.PriorityOrder)
+                            {
+                                needsReprioritization = true;
+                            }
+                        }
+                    }
+
+                    if (!hasEbayRule || needsReprioritization)
+                    {
+                        var nonCategoryRules = new List<CommissionRule>();
+                        var categoryRules = new List<CommissionRule>();
+
+                        foreach (var rule in settings.ActiveRules)
+                        {
+                            if (rule.Scope == RuleScope.CategorySpecific)
+                            {
+                                categoryRules.Add(rule);
+                            }
+                            else if (rule.Scope != RuleScope.AllEbay)
+                            {
+                                nonCategoryRules.Add(rule);
+                            }
+                        }
+
+                        var newEbayRule = settings.ActiveRules.FirstOrDefault(r => r.Scope == RuleScope.AllEbay) ?? new CommissionRule
+                        {
+                            RuleName = "Default eBay Rule",
+                            Scope = RuleScope.AllEbay,
+                            CalculationType = PayoutType.PercentageOfPrice,
+                            RuleValue = 0.10m
+                        };
+
+                        nonCategoryRules.Add(newEbayRule);
+
+                        // Order non-category rules by their existing priority, then append category rules
+                        var orderedNonCategory = nonCategoryRules.OrderBy(r => r.PriorityOrder).ToList();
+                        var orderedCategory = categoryRules.OrderBy(r => r.PriorityOrder).ToList();
+
+                        var combined = new List<CommissionRule>();
+                        combined.AddRange(orderedNonCategory);
+                        combined.AddRange(orderedCategory);
+
+                        for (int i = 0; i < combined.Count; i++)
+                        {
+                            combined[i].PriorityOrder = i;
+                        }
+
+                        settings.ActiveRules = combined;
                         modified = true;
                     }
                 }
@@ -295,8 +359,16 @@ namespace SalesLedger.Core.Services
                     },
                     new CommissionRule
                     {
-                        RuleName = "Lens Standard Rule",
+                        RuleName = "Default eBay Rule",
                         PriorityOrder = 2,
+                        Scope = RuleScope.AllEbay,
+                        CalculationType = PayoutType.PercentageOfPrice,
+                        RuleValue = 0.10m // 10%
+                    },
+                    new CommissionRule
+                    {
+                        RuleName = "Lens Standard Rule",
+                        PriorityOrder = 3,
                         Scope = RuleScope.CategorySpecific,
                         TargetCategory = "Lens",
                         CalculationType = PayoutType.PercentageOfPrice,
@@ -305,7 +377,7 @@ namespace SalesLedger.Core.Services
                     new CommissionRule
                     {
                         RuleName = "Mirrorless Standard Rule",
-                        PriorityOrder = 3,
+                        PriorityOrder = 4,
                         Scope = RuleScope.CategorySpecific,
                         TargetCategory = "Mirrorless",
                         CalculationType = PayoutType.PercentageOfPrice,

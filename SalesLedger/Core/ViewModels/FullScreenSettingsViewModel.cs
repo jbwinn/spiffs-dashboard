@@ -34,6 +34,15 @@ namespace SalesLedger.Core.ViewModels
         [ObservableProperty] private PayoutType _newRuleCalculationType = PayoutType.PercentageOfPrice;
         [ObservableProperty] private decimal _newRuleValue;
 
+        // Edit Rule fields
+        [ObservableProperty] private bool _isEditRuleDialogVisible;
+        [ObservableProperty] private string _editRuleName = string.Empty;
+        [ObservableProperty] private RuleScope _editRuleScope = RuleScope.CategorySpecific;
+        [ObservableProperty] private string _editRuleTargetCategory = string.Empty;
+        [ObservableProperty] private PayoutType _editRuleCalculationType = PayoutType.PercentageOfPrice;
+        [ObservableProperty] private decimal _editRuleValue;
+        private CommissionRule? _editingRuleInstance;
+
         // Binding helper for rule scopes & payout types
         public List<RuleScope> ScopeOptions => Enum.GetValues<RuleScope>().ToList();
         public List<PayoutType> PayoutTypeOptions => Enum.GetValues<PayoutType>().ToList();
@@ -359,6 +368,63 @@ namespace SalesLedger.Core.ViewModels
             NewRuleName = string.Empty;
             NewRuleValue = 0m;
             ShowStatus("Rule added to waterfall.", false);
+        }
+
+        [RelayCommand]
+        public void EditCommissionRule(CommissionRule rule)
+        {
+            if (rule == null) return;
+            _editingRuleInstance = rule;
+            EditRuleName = rule.RuleName;
+            EditRuleScope = rule.Scope;
+            EditRuleTargetCategory = rule.TargetCategory;
+            EditRuleCalculationType = rule.CalculationType;
+            EditRuleValue = rule.RuleValue;
+            IsEditRuleDialogVisible = true;
+        }
+
+        [RelayCommand]
+        public void CloseEditRuleDialog()
+        {
+            IsEditRuleDialogVisible = false;
+            _editingRuleInstance = null;
+        }
+
+        [RelayCommand]
+        public void SaveEditedRule()
+        {
+            if (_editingRuleInstance == null) return;
+
+            if (string.IsNullOrWhiteSpace(EditRuleName))
+            {
+                ShowStatus("Rule Name cannot be empty.", true);
+                return;
+            }
+
+            if (EditRuleScope == RuleScope.CategorySpecific && string.IsNullOrEmpty(EditRuleTargetCategory))
+            {
+                ShowStatus("Please select a target category for CategorySpecific rule.", true);
+                return;
+            }
+
+            // Update instance
+            _editingRuleInstance.RuleName = EditRuleName.Trim();
+            _editingRuleInstance.Scope = EditRuleScope;
+            _editingRuleInstance.TargetCategory = EditRuleScope == RuleScope.CategorySpecific ? EditRuleTargetCategory : string.Empty;
+            _editingRuleInstance.CalculationType = EditRuleCalculationType;
+            _editingRuleInstance.RuleValue = EditRuleValue;
+
+            // Find in collection and force a refresh by replacing it
+            int index = Rules.IndexOf(_editingRuleInstance);
+            if (index >= 0)
+            {
+                Rules[index] = _editingRuleInstance;
+            }
+
+            SaveTaxonomyAndRules();
+            IsEditRuleDialogVisible = false;
+            _editingRuleInstance = null;
+            ShowStatus("Rule edited successfully.", false);
         }
 
         [RelayCommand]

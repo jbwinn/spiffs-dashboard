@@ -451,6 +451,7 @@
                             <ComboBox.Items>
                                 <x:String>Standard</x:String>
                                 <x:String>Warranty</x:String>
+                                <x:String>Ebay</x:String>
                             </ComboBox.Items>
                         </ComboBox>
                     </StackPanel>
@@ -483,7 +484,7 @@
                         </Grid>
 
                         <Grid ColumnDefinitions="*, 12, *">
-                            <StackPanel Grid.Column="0" Spacing="4" IsVisible="{Binding ImportAsType, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter='Standard'}">
+                            <StackPanel Grid.Column="0" Spacing="4" IsVisible="{Binding IsStandardOrEbayImport}">
                                 <TextBlock Text="Category" Foreground="#E2E8F0" FontSize="10"/>
                                 <ComboBox ItemsSource="{Binding CsvHeaders}" SelectedItem="{Binding SelectedCategoryHeader, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="32"/>
                             </StackPanel>
@@ -493,8 +494,8 @@
                             </StackPanel>
                         </Grid>
 
-                        <!-- Standard specific mapper -->
-                        <StackPanel Spacing="8" IsVisible="{Binding ImportAsType, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter='Standard'}">
+                        <!-- Standard/eBay specific mapper -->
+                        <StackPanel Spacing="8" IsVisible="{Binding IsStandardOrEbayImport}">
                             <Grid ColumnDefinitions="*, 12, *">
                                 <StackPanel Grid.Column="0" Spacing="4">
                                     <TextBlock Text="Is Used Gear Column" Foreground="#E2E8F0" FontSize="10"/>
@@ -506,12 +507,12 @@
                                 </StackPanel>
                             </Grid>
                             <CheckBox IsChecked="{Binding AllStandardAreUsed, Mode=TwoWay}">
-                                <TextBlock Text="Treat all Standard imports as USED unless marked new" Foreground="#94A3B8" FontSize="10"/>
+                                <TextBlock Text="Treat all imports as USED unless marked new" Foreground="#94A3B8" FontSize="10"/>
                             </CheckBox>
                         </StackPanel>
 
                         <!-- Warranty specific mapper -->
-                        <StackPanel Spacing="8" IsVisible="{Binding ImportAsType, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter='Warranty'}">
+                        <StackPanel Spacing="8" IsVisible="{Binding IsWarrantyImport}">
                             <Grid ColumnDefinitions="*, 12, *">
                                 <StackPanel Grid.Column="0" Spacing="4">
                                     <TextBlock Text="Warranty Type Column" Foreground="#E2E8F0" FontSize="10"/>

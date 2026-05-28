@@ -121,7 +121,17 @@ namespace SalesLedger.Core.Converters
         {
             if (value is Models.PayoutType type)
             {
-                return type == Models.PayoutType.PercentageOfPrice ? "Percentage" : "Flat Rate";
+                switch (type)
+                {
+                    case Models.PayoutType.PercentageOfPrice:
+                        return "Percentage of Price";
+                    case Models.PayoutType.FlatRate:
+                        return "Flat Rate";
+                    case Models.PayoutType.PercentageOfNetProfit:
+                        return "Percentage of Net Margin";
+                    default:
+                        return type.ToString();
+                }
             }
             return string.Empty;
         }

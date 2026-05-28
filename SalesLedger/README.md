@@ -38,12 +38,14 @@ To achieve sub-second analytical dashboard responsiveness while maintaining abso
 ## 2. Walkthrough of Functionality
 
 ### 2.1 Transaction Management (Ledger Dashboard)
-* **Standard & Warranty Transactions**: Users can record hardware sales (Standard) or protection plans (Warranty). Standard sales contain hardware-specific metadata (`IsUsedGear`), while warranty sales track plan categories (`Sony`, `Fuji`, `Nikon`, etc.) and manufacturer wholesale costs.
+* **Standard, Warranty, & eBay Transactions**: Users can record hardware sales (Standard), protection plans (Warranty), or eBay listings (eBay). Standard and eBay sales contain hardware-specific metadata (`IsUsedGear`), while warranty sales track plan categories (`Sony`, `Fuji`, `Nikon`, etc.) and manufacturer wholesale costs. eBay sales dynamically rename the "Receipt" field to "Order Code".
 * **Hover Row Actions**: Action buttons (✏️ Edit, ↩️ Return, 🗑️ Delete) fade in contextually when hovering over any row in the ledger grid, removing visual clutter from the dashboard.
-* **Interactive Filtering & Column Sorting**:
-  * Users can search by invoices or products and filter by custom start/end dates.
+* **Grid Formatting, Resizing, & Sorting**:
+  * Grid rows default to auto-fitting content so that text is never cut off.
+  * Columns can be dragged to resize.
+  * Clicking on column headers sorts the grid (dates descending by default, text alphabetically, or numeric fields by value).
+  * Users can search by invoices/receipts or products and filter by custom start/end dates.
   * A "High-Value" toggle filters the grid to premium products (`SalePrice >= $1,500`).
-  * Clicking on headers sorts columns with toggleable reverse sorting.
 
 ### 2.2 Analytics Canvas (Sales Trends)
 * **Sub-second OLAP Aggregations**: The dashboard aggregates volumes dynamically over customized intervals (Day, Week, Month) using DuckDB SQL.
@@ -57,15 +59,17 @@ To achieve sub-second analytical dashboard responsiveness while maintaining abso
 ### 2.3 Commission Waterfall Engine
 Commissions are calculated instantly during entry or import through a user-prioritized waterfall of matching criteria:
 * **All Used Gear Rule**: Triggers matching rules for physical equipment marked as *Used Gear* (Defaults to **3%** of Sale Price).
-* **All Warranty Rule**: Triggers matching rules for protection packages (Defaults to **10%** of Sale Price).
+* **All Warranty Rule**: Triggers matching rules for protection packages (Defaults to **10%** of Net Margin/Profit).
+* **All eBay Rule**: Triggers matching rules for items sold on eBay (Defaults to **10%** of Sale Price).
 * **Category Specific Rules**: Rules tied directly to product lines (e.g., Lenses at **8%**, Mirrorless at **5%**).
 * **Payout Calculation Types**: Supports flat rates (e.g. `$25.00`), percentage of price, and percentage of net profit (warranties only: `(SalePrice - ManufacturerPrice) * Rate`).
+* **Rule Basis Display**: Each rule card in the waterfall UI explicitly displays what the commission is based on (e.g., "Percentage of Price", "Flat Rate", or "Percentage of Net Margin").
 
 ### 2.4 CSV Import Wizard
 Imports sales records from spreadsheets/spiff sheets:
 * **Header Mapping**: Standardized matching rules map columns automatically.
 * **Optional Fields & `[None]` Option**: If a field is not present in the CSV (e.g. wholesale price or used gear flags), users can select `[None]` to skip it and apply system-wide defaults (such as setting all imported items as used gear).
-* **Context-Aware Import**: Importing as "Warranty" automatically hides the standard product category mapping and applies a default brand classification.
+* **Context-Aware Import**: Importing as "Warranty" automatically hides the standard product category mapping and applies a default brand classification. Importing as "Standard" or "Ebay" exposes the category mapping, used gear column mapping, and default category fallback options.
 
 ### 2.5 Period Finalization & Auto-Launch Report
 * **Double-Entry Returns Processing**:
@@ -75,8 +79,17 @@ Imports sales records from spreadsheets/spiff sheets:
 
 ### 2.6 Full-Screen Settings
 * **Taxonomy Presets**: Configure system-level product categories and warranty brands. Presets are soft-deletable to keep historical transactions intact while pruning future selection choices.
-* **Interactive Rules Reordering**: Drag-and-drop rule rows to reprioritize their execution order within the waterfall engine.
+* **Interactive Rules Management**: 
+  * Drag-and-drop rule rows to reprioritize their execution order within the waterfall engine.
+  * An **Edit** button on each rule card triggers an edit modal overlay allowing direct updates to Rule Name, Scope, Target Category, Payout Method, and Value.
 * **Database Reset Tool**: Provides a developer utility under Settings -> Profile to instantly wipe the LiteDB and rebuild the DuckDB analytical tables.
+* **Test Update UI**: Debug builds display a "Test Update UI" button under Application Updates to allow developers to preview the software update overlay, cancel it, or simulate installation progress and auto-restarts locally.
+
+### 2.7 Application Update Dialog Overlay
+When an update is checked (either automatically on startup or manually via Settings) and found:
+* A modal dialog overlay appears prompting the user to install the update and states that the application will restart automatically.
+* Confirming the update initiates a background download with progress/disabled buttons to prevent UI thread locks.
+* Once the update is downloaded, the application automatically restarts using Velopack to apply the new version.
 
 ---
 
@@ -130,6 +143,7 @@ dotnet restore
 ```powershell
 dotnet run --project SalesLedger
 ```
+*Note: Debug builds automatically target isolated database files (`SalesLedgerDev` directories for LiteDB and DuckDB), safeguarding your installed production database from testing data.*
 
 ### Run Unit Test Suite
 Runs all unit and integration tests covering database replication, waterfall logic, returns, and CSV parsing:

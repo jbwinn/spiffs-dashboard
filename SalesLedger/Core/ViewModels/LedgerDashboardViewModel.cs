@@ -87,7 +87,17 @@ namespace SalesLedger.Core.ViewModels
         // CSV Import Wizard Properties
         [ObservableProperty] private bool _isImportDialogVisible;
         [ObservableProperty] private string _csvFilePath = string.Empty;
-        [ObservableProperty] private string _importAsType = "Standard"; // "Standard" or "Warranty"
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(IsStandardImport))]
+        [NotifyPropertyChangedFor(nameof(IsWarrantyImport))]
+        [NotifyPropertyChangedFor(nameof(IsEbayImport))]
+        [NotifyPropertyChangedFor(nameof(IsStandardOrEbayImport))]
+        private string _importAsType = "Standard"; // "Standard", "Warranty", or "Ebay"
+
+        public bool IsStandardImport => ImportAsType == "Standard";
+        public bool IsWarrantyImport => ImportAsType == "Warranty";
+        public bool IsEbayImport => ImportAsType == "Ebay";
+        public bool IsStandardOrEbayImport => ImportAsType == "Standard" || ImportAsType == "Ebay";
         public ObservableCollection<string> CsvHeaders { get; } = new();
 
         [ObservableProperty] private string _selectedDateHeader = string.Empty;
@@ -779,7 +789,7 @@ namespace SalesLedger.Core.ViewModels
                     }
 
                     string category = "Warranty";
-                    if (ImportAsType == "Standard")
+                    if (ImportAsType == "Standard" || ImportAsType == "Ebay")
                     {
                         category = !string.IsNullOrEmpty(catStr) ? catStr : DefaultCategory;
                         var matchingCategory = settings.ProductCategories.FirstOrDefault(c => c.Name.Equals(category, StringComparison.OrdinalIgnoreCase));
@@ -808,6 +818,21 @@ namespace SalesLedger.Core.ViewModels
                         }
                         std.IsUsedGear = isUsed;
                         record = std;
+                    }
+                    else if (ImportAsType == "Ebay")
+                    {
+                        var ebay = new EbaySale();
+                        bool isUsed = AllStandardAreUsed;
+                        if (usedIdx >= 0 && usedIdx < row.Length)
+                        {
+                            string uVal = row[usedIdx].ToLowerInvariant();
+                            if (uVal.Contains("used") || uVal == "yes" || uVal == "true" || uVal == "1")
+                            {
+                                isUsed = true;
+                            }
+                        }
+                        ebay.IsUsedGear = isUsed;
+                        record = ebay;
                     }
                     else
                     {

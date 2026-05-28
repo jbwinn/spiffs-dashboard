@@ -204,9 +204,11 @@ namespace SalesLedger.Core.Services
                             rule.RuleValue = 0.03m;
                             modified = true;
                         }
-                        else if (rule.RuleName == "Default Warranty Rule" && rule.RuleValue == 25.00m && rule.CalculationType == PayoutType.FlatRate)
+                        else if (rule.RuleName == "Default Warranty Rule" && 
+                                 ((rule.RuleValue == 25.00m && rule.CalculationType == PayoutType.FlatRate) || 
+                                  (rule.RuleValue == 0.10m && rule.CalculationType == PayoutType.PercentageOfPrice)))
                         {
-                            rule.CalculationType = PayoutType.PercentageOfPrice;
+                            rule.CalculationType = PayoutType.PercentageOfNetProfit;
                             rule.RuleValue = 0.10m;
                             modified = true;
                         }
@@ -354,7 +356,7 @@ namespace SalesLedger.Core.Services
                         RuleName = "Default Warranty Rule",
                         PriorityOrder = 1,
                         Scope = RuleScope.AllWarranty,
-                        CalculationType = PayoutType.PercentageOfPrice,
+                        CalculationType = PayoutType.PercentageOfNetProfit,
                         RuleValue = 0.10m // 10%
                     },
                     new CommissionRule

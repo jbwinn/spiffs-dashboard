@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SalesLedger.Core.Models;
@@ -47,15 +48,50 @@ namespace SalesLedger.Core.ViewModels
         [ObservableProperty]
         private bool _isStatusError;
 
+        private bool _autoUpdateEnabled;
+        public bool AutoUpdateEnabled
+        {
+            get => _autoUpdateEnabled;
+            set => SetProperty(ref _autoUpdateEnabled, value);
+        }
+
+        private string _updateStatusMessage = string.Empty;
+        public string UpdateStatusMessage
+        {
+            get => _updateStatusMessage;
+            set => SetProperty(ref _updateStatusMessage, value);
+        }
+
+        private bool _isCheckingForUpdates;
+        public bool IsCheckingForUpdates
+        {
+            get => _isCheckingForUpdates;
+            set
+            {
+                if (SetProperty(ref _isCheckingForUpdates, value))
+                {
+                    OnPropertyChanged(nameof(IsNotCheckingForUpdates));
+                }
+            }
+        }
+
+        public bool IsNotCheckingForUpdates => !_isCheckingForUpdates;
+
+        private IAsyncRelayCommand? _checkForUpdatesManualCommand;
+        public IAsyncRelayCommand CheckForUpdatesManualCommand => 
+            _checkForUpdatesManualCommand ??= new AsyncRelayCommand(CheckForUpdatesManualAsync);
+
         public FullScreenSettingsViewModel(MainWindowViewModel mainVm)
         {
             _mainVm = mainVm ?? throw new ArgumentNullException(nameof(mainVm));
+            LoadSettings();
         }
 
         public void LoadSettings()
         {
             var settings = _mainVm.LiteDb.GetUserSettings();
             UserDisplayName = settings.UserDisplayName;
+            AutoUpdateEnabled = settings.AutoUpdateEnabled;
 
             Categories.Clear();
             foreach (var cat in settings.ProductCategories)
@@ -94,8 +130,44 @@ namespace SalesLedger.Core.ViewModels
 
             var settings = _mainVm.LiteDb.GetUserSettings();
             settings.UserDisplayName = UserDisplayName;
+            settings.AutoUpdateEnabled = AutoUpdateEnabled;
             _mainVm.LiteDb.SaveUserSettings(settings);
             ShowStatus("Profile saved successfully!", false);
+        }
+
+        public async Task CheckForUpdatesManualAsync()
+        {
+            if (IsCheckingForUpdates) return;
+            IsCheckingForUpdates = true;
+            UpdateStatusMessage = "Checking for updates...";
+
+            try
+            {
+                var updateSource = new Velopack.Sources.GithubSource("https://github.com/jbwinn/spiffs-dashboard", null, false);
+                var updateManager = new Velopack.UpdateManager(updateSource);
+                var updateInfo = await updateManager.CheckForUpdatesAsync();
+
+                if (updateInfo != null)
+                {
+                    UpdateStatusMessage = $"Update found (v{updateInfo.TargetFullRelease.Version}). Downloading...";
+                    await updateManager.DownloadUpdatesAsync(updateInfo);
+                    UpdateStatusMessage = "Update downloaded. Restarting application...";
+                    await Task.Delay(2000);
+                    updateManager.ApplyUpdatesAndExit(updateInfo);
+                }
+                else
+                {
+                    UpdateStatusMessage = "Application is up to date.";
+                }
+            }
+            catch (Exception ex)
+            {
+                UpdateStatusMessage = $"Update check failed: {ex.Message}";
+            }
+            finally
+            {
+                IsCheckingForUpdates = false;
+            }
         }
 
         [RelayCommand]

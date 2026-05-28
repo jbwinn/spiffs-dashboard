@@ -68,8 +68,8 @@ namespace SalesLedger.Core.Services
                         {
                             var totalSales = sales.Sum(s => s.SalePrice);
                             var totalCommission = sales.Sum(s => s.CalculatedCommission);
-                            var unitsSold = sales.Count(s => s.RecordType == SaleType.Standard) - sales.Count(s => s.RecordType == SaleType.ReturnOffset);
-                            var standardSales = sales.Where(s => s.RecordType == SaleType.Standard && s.SalePrice > 0).ToList();
+                            var unitsSold = sales.Count(s => s.RecordType == SaleType.Standard || s.RecordType == SaleType.Ebay) - sales.Count(s => s.RecordType == SaleType.ReturnOffset);
+                            var standardSales = sales.Where(s => (s.RecordType == SaleType.Standard || s.RecordType == SaleType.Ebay) && s.SalePrice > 0).ToList();
                             var asp = standardSales.Any() ? standardSales.Average(s => s.SalePrice) : 0m;
 
                             row.RelativeItem().Element(c => ConfigureStatCard(c, "Total Sales", totalSales.ToString("C")));
@@ -84,45 +84,68 @@ namespace SalesLedger.Core.Services
                         // Sales Details Table title
                         column.Item().PaddingBottom(8).Text("Transaction Ledger Details").FontSize(14).Bold().FontColor(Colors.Blue.Darken3);
 
-                        // Table
-                        column.Item().Table(table =>
+                        void RenderSection(string title, List<SaleRecord> sectionSales)
                         {
-                            // Define columns
-                            table.ColumnsDefinition(columns =>
+                            if (!sectionSales.Any()) return;
+
+                            column.Item().PaddingTop(12).PaddingBottom(4).Text(title).FontSize(11).Bold().FontColor(Colors.Blue.Darken2);
+
+                            column.Item().Table(table =>
                             {
-                                columns.ConstantColumn(80);  // Date
-                                columns.ConstantColumn(80);  // Invoice
-                                columns.RelativeColumn(3);   // Product Name
-                                columns.RelativeColumn(2);   // Category
-                                columns.RelativeColumn(2);   // Price
-                                columns.RelativeColumn(2);   // Commission
+                                // Define columns
+                                table.ColumnsDefinition(columns =>
+                                {
+                                    columns.ConstantColumn(80);  // Date
+                                    columns.ConstantColumn(85);  // Invoice / Order Code
+                                    columns.RelativeColumn(3);   // Product Name
+                                    columns.RelativeColumn(2);   // Category
+                                    columns.RelativeColumn(2);   // Price
+                                    columns.RelativeColumn(2);   // Commission
+                                });
+
+                                // Headers
+                                table.Header(header =>
+                                {
+                                    header.Cell().Element(ConfigureHeaderCell).Text("Date").Bold();
+                                    header.Cell().Element(ConfigureHeaderCell).Text(title.Contains("eBay") ? "Order Code" : "Invoice").Bold();
+                                    header.Cell().Element(ConfigureHeaderCell).Text("Product").Bold();
+                                    header.Cell().Element(ConfigureHeaderCell).Text("Category").Bold();
+                                    header.Cell().Element(ConfigureHeaderCell).Text("Price").Bold().AlignRight();
+                                    header.Cell().Element(ConfigureHeaderCell).Text("Commission").Bold().AlignRight();
+                                });
+
+                                // Rows
+                                bool isAlternate = false;
+                                foreach (var sale in sectionSales.OrderBy(s => s.TransactionDate))
+                                {
+                                    table.Cell().Element(c => ConfigureCell(c, isAlternate)).Text(sale.TransactionDate.ToString("yyyy-MM-dd"));
+                                    table.Cell().Element(c => ConfigureCell(c, isAlternate)).Text(sale.InvoiceNumber);
+                                    table.Cell().Element(c => ConfigureCell(c, isAlternate)).Text(sale.ProductName);
+                                    table.Cell().Element(c => ConfigureCell(c, isAlternate)).Text(sale.Category);
+                                    table.Cell().Element(c => ConfigureCell(c, isAlternate)).AlignRight().Text(sale.SalePrice.ToString("C"));
+                                    table.Cell().Element(c => ConfigureCell(c, isAlternate)).AlignRight().Text(sale.CalculatedCommission.ToString("C"));
+
+                                    isAlternate = !isAlternate;
+                                }
+
+                                // Subtotals
+                                var subTotalSales = sectionSales.Sum(s => s.SalePrice);
+                                var subTotalComm = sectionSales.Sum(s => s.CalculatedCommission);
+
+                                table.Cell().Element(ConfigureSubtotalCell).Text(string.Empty);
+                                table.Cell().Element(ConfigureSubtotalCell).Text(string.Empty);
+                                table.Cell().Element(ConfigureSubtotalCell).Text("Subtotal").Bold();
+                                table.Cell().Element(ConfigureSubtotalCell).Text(string.Empty);
+                                table.Cell().Element(ConfigureSubtotalCell).AlignRight().Text(subTotalSales.ToString("C")).Bold();
+                                table.Cell().Element(ConfigureSubtotalCell).AlignRight().Text(subTotalComm.ToString("C")).Bold();
                             });
+                        }
 
-                            // Headers
-                            table.Header(header =>
-                            {
-                                header.Cell().Element(ConfigureHeaderCell).Text("Date").Bold();
-                                header.Cell().Element(ConfigureHeaderCell).Text("Invoice").Bold();
-                                header.Cell().Element(ConfigureHeaderCell).Text("Product").Bold();
-                                header.Cell().Element(ConfigureHeaderCell).Text("Category").Bold();
-                                header.Cell().Element(ConfigureHeaderCell).Text("Price").Bold().AlignRight();
-                                header.Cell().Element(ConfigureHeaderCell).Text("Commission").Bold().AlignRight();
-                            });
-
-                            // Rows
-                            bool isAlternate = false;
-                            foreach (var sale in sales.OrderBy(s => s.TransactionDate))
-                            {
-                                table.Cell().Element(c => ConfigureCell(c, isAlternate)).Text(sale.TransactionDate.ToString("yyyy-MM-dd"));
-                                table.Cell().Element(c => ConfigureCell(c, isAlternate)).Text(sale.InvoiceNumber);
-                                table.Cell().Element(c => ConfigureCell(c, isAlternate)).Text(sale.ProductName);
-                                table.Cell().Element(c => ConfigureCell(c, isAlternate)).Text(sale.Category);
-                                table.Cell().Element(c => ConfigureCell(c, isAlternate)).AlignRight().Text(sale.SalePrice.ToString("C"));
-                                table.Cell().Element(c => ConfigureCell(c, isAlternate)).AlignRight().Text(sale.CalculatedCommission.ToString("C"));
-
-                                isAlternate = !isAlternate;
-                            }
-                        });
+                        RenderSection("Standard Sales (New Gear)", sales.Where(s => s is StandardSale std && !std.IsUsedGear).Cast<SaleRecord>().ToList());
+                        RenderSection("Standard Sales (Used Gear)", sales.Where(s => s is StandardSale std && std.IsUsedGear).Cast<SaleRecord>().ToList());
+                        RenderSection("eBay Sales", sales.Where(s => s is EbaySale).ToList());
+                        RenderSection("Warranty Sales", sales.Where(s => s is WarrantySale).ToList());
+                        RenderSection("Return Offsets", sales.Where(s => s is ReturnOffsetSale).ToList());
                     });
 
                     // Footer
@@ -167,6 +190,16 @@ namespace SalesLedger.Core.Services
                 .Background(isAlternate ? Colors.Grey.Lighten5 : Colors.White)
                 .PaddingVertical(4)
                 .PaddingHorizontal(2);
+        }
+
+        private IContainer ConfigureSubtotalCell(IContainer container)
+        {
+            return container
+                .BorderTop(1)
+                .BorderColor(Colors.Grey.Darken1)
+                .PaddingVertical(4)
+                .PaddingHorizontal(2)
+                .Background(Colors.Grey.Lighten4);
         }
     }
 }

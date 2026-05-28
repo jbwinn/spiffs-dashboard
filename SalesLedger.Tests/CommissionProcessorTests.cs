@@ -192,5 +192,23 @@ namespace SalesLedger.Tests
             // 10% of $100 = $10
             Assert.Equal(10.00m, commission);
         }
+
+        [Fact]
+        public void EbaySale_AlwaysCalculatesTenPercentCommission()
+        {
+            var sale = new EbaySale
+            {
+                Id = Guid.NewGuid(),
+                Category = "Cameras",
+                SalePrice = 1200m,
+                IsUsedGear = true
+            };
+
+            // Calculate even with rule list (Ebay sales should bypass rules waterfall)
+            var commission = _processor.CalculateLineItem(sale, _defaultRules);
+
+            // 10% of $1200 = $120
+            Assert.Equal(120.00m, commission);
+        }
     }
 }

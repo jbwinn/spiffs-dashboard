@@ -15,6 +15,12 @@ namespace SalesLedger.Core.Services
                 return sale.CalculatedCommission;
             }
 
+            // eBay sales have a fixed commission of 10% on the sale price
+            if (sale is EbaySale)
+            {
+                return Math.Round(sale.SalePrice * 0.10m, 2);
+            }
+
             // Enforce sorting sequence matching the defined waterfall ranking hierarchy
             var waterfall = activeRules.OrderBy(r => r.PriorityOrder).ToList();
 

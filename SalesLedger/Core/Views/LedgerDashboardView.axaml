@@ -231,7 +231,7 @@
                                 <!-- Search input -->
                                 <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,10,0">
                                     <TextBlock Text="Search Sale" Foreground="#94A3B8" FontSize="11" FontWeight="SemiBold"/>
-                                    <TextBox Text="{Binding SearchText, Mode=TwoWay}" PlaceholderText="Search SKU, Product, Invoice..." Height="32" VerticalContentAlignment="Center"/>
+                                    <TextBox Text="{Binding SearchText, Mode=TwoWay}" PlaceholderText="Search SKU, Product, Invoice/Order Code..." Height="32" VerticalContentAlignment="Center"/>
                                 </StackPanel>
 
                                 <!-- Type Filter -->
@@ -270,28 +270,30 @@
                         
                         <!-- DataGrid -->
                         <DataGrid Grid.Row="2" 
-                                  ItemsSource="{Binding RecentSales}" 
+                                  ItemsSource="{Binding RecentSalesView}" 
                                   SelectedItem="{Binding SelectedSale, Mode=TwoWay}"
                                   AutoGenerateColumns="False" 
                                   IsReadOnly="True" 
                                   CanUserSortColumns="True"
+                                  CanUserResizeColumns="True"
+                                  CanUserReorderColumns="True"
                                   Height="320"
                                   RowHeight="38"
                                   BorderBrush="#334155"
                                   BorderThickness="1"
                                   Background="#0F172A">
                             <DataGrid.Columns>
-                                <DataGridTextColumn Header="Date" Binding="{Binding TransactionDate, StringFormat='\{0:yyyy-MM-dd}'}" Width="110" CanUserSort="True"/>
-                                <DataGridTextColumn Header="Invoice" Binding="{Binding InvoiceNumber}" Width="100" CanUserSort="True"/>
-                                <DataGridTextColumn Header="Product Name" Binding="{Binding ProductName}" Width="*" CanUserSort="True"/>
-                                <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="120" CanUserSort="True"/>
-                                <DataGridTextColumn Header="Price" Binding="{Binding SalePrice, StringFormat='\{0:C}'}" Width="110" CanUserSort="True"/>
-                                <DataGridTextColumn Header="Commission" Binding="{Binding CalculatedCommission, StringFormat='\{0:C}'}" Width="130" CanUserSort="True"/>
-                                <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="160" CanUserSort="True"/>
+                                <DataGridTextColumn x:DataType="models:SaleRecord" Header="Date" Binding="{Binding TransactionDate, StringFormat='\{0:yyyy-MM-dd}'}" Width="Auto" MinWidth="110" CanUserSort="True" SortMemberPath="TransactionDate"/>
+                                <DataGridTextColumn x:DataType="models:SaleRecord" Header="Invoice / Order Code" Binding="{Binding InvoiceNumber}" Width="Auto" MinWidth="150" CanUserSort="True" SortMemberPath="InvoiceNumber"/>
+                                <DataGridTextColumn x:DataType="models:SaleRecord" Header="Product Name" Binding="{Binding ProductName}" Width="*" MinWidth="180" CanUserSort="True" SortMemberPath="ProductName"/>
+                                <DataGridTextColumn x:DataType="models:SaleRecord" Header="Category" Binding="{Binding Category}" Width="Auto" MinWidth="120" CanUserSort="True" SortMemberPath="Category"/>
+                                <DataGridTextColumn x:DataType="models:SaleRecord" Header="Price" Binding="{Binding SalePrice, StringFormat='\{0:C}'}" Width="Auto" MinWidth="110" CanUserSort="True" SortMemberPath="SalePrice"/>
+                                <DataGridTextColumn x:DataType="models:SaleRecord" Header="Commission" Binding="{Binding CalculatedCommission, StringFormat='\{0:C}'}" Width="Auto" MinWidth="130" CanUserSort="True" SortMemberPath="CalculatedCommission"/>
+                                <DataGridTextColumn x:DataType="models:SaleRecord" Header="Status" Binding="{Binding Status}" Width="Auto" MinWidth="160" CanUserSort="True" SortMemberPath="Status"/>
                                 
-                                <DataGridTemplateColumn Width="110" CanUserSort="False">
+                                <DataGridTemplateColumn x:DataType="models:SaleRecord" Width="110" CanUserSort="False">
                                     <DataGridTemplateColumn.CellTemplate>
-                                        <DataTemplate>
+                                        <DataTemplate x:DataType="models:SaleRecord">
                                             <StackPanel Name="ActionPanel" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center" VerticalAlignment="Center">
                                                 <!-- Edit Button -->
                                                 <Button Command="{Binding $parent[DataGrid].((vm:LedgerDashboardViewModel)DataContext).EditSaleCommand}"
@@ -334,8 +336,8 @@
                     <!-- Form fields -->
                     <Grid ColumnDefinitions="*, 12, *">
                         <StackPanel Grid.Column="0" Spacing="4">
-                            <TextBlock Text="Invoice Number" Foreground="#E2E8F0" FontSize="11"/>
-                            <TextBox Text="{Binding InvoiceNumber, Mode=TwoWay}" PlaceholderText="e.g. INV-1001" Height="36" VerticalContentAlignment="Center"/>
+                            <TextBlock Text="{Binding InvoiceLabel}" Foreground="#E2E8F0" FontSize="11"/>
+                            <TextBox Text="{Binding InvoiceNumber, Mode=TwoWay}" PlaceholderText="{Binding InvoicePlaceholder}" Height="36" VerticalContentAlignment="Center"/>
                         </StackPanel>
                         <StackPanel Grid.Column="2" Spacing="4">
                             <TextBlock Text="SKU / Item code" Foreground="#E2E8F0" FontSize="11"/>
@@ -350,13 +352,13 @@
 
                     <Grid ColumnDefinitions="*, 12, *">
                         <Panel Grid.Column="0">
-                            <!-- Category (Standard) -->
-                            <StackPanel Spacing="4" IsVisible="{Binding RecordType, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter='Standard'}">
+                            <!-- Category (Standard / eBay) -->
+                            <StackPanel Spacing="4" IsVisible="{Binding ShowCategory}">
                                 <TextBlock Text="Category" Foreground="#E2E8F0" FontSize="11"/>
                                 <ComboBox ItemsSource="{Binding Categories}" SelectedItem="{Binding Category, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="36"/>
                             </StackPanel>
                             <!-- Warranty Brand (Warranty) -->
-                            <StackPanel Spacing="4" IsVisible="{Binding RecordType, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter='Warranty'}">
+                            <StackPanel Spacing="4" IsVisible="{Binding ShowWarranty}">
                                 <TextBlock Text="Warranty Brand" Foreground="#E2E8F0" FontSize="11"/>
                                 <ComboBox ItemsSource="{Binding WarrantyTypes}" SelectedItem="{Binding WarrantyTypeName, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="36"/>
                             </StackPanel>
@@ -377,19 +379,20 @@
                             <ComboBox SelectedIndex="{Binding SelectedRecordTypeIndex, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="36">
                                 <ComboBoxItem Content="Standard Sale"/>
                                 <ComboBoxItem Content="Warranty Sale"/>
+                                <ComboBoxItem Content="eBay Sale"/>
                             </ComboBox>
                         </StackPanel>
                     </Grid>
 
-                    <!-- Standard Sale Conditional Fields -->
-                    <StackPanel Spacing="6" IsVisible="{Binding RecordType, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter='Standard'}">
+                    <!-- Standard / eBay Sale Conditional Fields -->
+                    <StackPanel Spacing="6" IsVisible="{Binding ShowUsedGear}">
                         <CheckBox IsChecked="{Binding IsUsedGear, Mode=TwoWay}">
                             <TextBlock Text="Is Used Equipment" Foreground="#E2E8F0" FontSize="12"/>
                         </CheckBox>
                     </StackPanel>
 
                     <!-- Warranty Sale Conditional Fields -->
-                    <StackPanel Spacing="12" IsVisible="{Binding RecordType, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter='Warranty'}">
+                    <StackPanel Spacing="12" IsVisible="{Binding ShowWarranty}">
                         <StackPanel Spacing="4">
                             <TextBlock Text="Manufacturer Wholesale Price" Foreground="#E2E8F0" FontSize="11"/>
                             <NumericUpDown Value="{Binding ManufacturerPrice, Mode=TwoWay}" Minimum="0" FormatString="C2" Height="36"/>

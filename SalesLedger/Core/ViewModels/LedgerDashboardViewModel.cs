@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Avalonia;
+using Avalonia.Collections;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform.Storage;
 using SalesLedger.Core.Models;
@@ -38,6 +39,7 @@ namespace SalesLedger.Core.ViewModels
         public List<string> MetricOptions { get; } = new() { "Revenue", "Quantity", "Commission" };
 
         public ObservableCollection<SaleRecord> RecentSales { get; } = new();
+        public DataGridCollectionView RecentSalesView { get; }
         public ObservableCollection<ChartItem> ChartItems { get; } = new();
 
         // Ledger Search & Filter Panel Properties
@@ -52,7 +54,7 @@ namespace SalesLedger.Core.ViewModels
 
         public List<string> SaleTypeFilterOptions { get; } = new()
         {
-            "All", "Standard (New)", "Standard (Used)", "Warranty", "Return Offset"
+            "All", "Standard (New)", "Standard (Used)", "eBay", "Warranty", "Return Offset"
         };
 
         public List<string> DateFilterTypeOptions { get; } = new()
@@ -123,13 +125,25 @@ namespace SalesLedger.Core.ViewModels
         [ObservableProperty] private DateTime? _transactionDate = DateTime.Now;
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(SelectedRecordTypeIndex))]
+        [NotifyPropertyChangedFor(nameof(InvoiceLabel))]
+        [NotifyPropertyChangedFor(nameof(InvoicePlaceholder))]
+        [NotifyPropertyChangedFor(nameof(ShowCategory))]
+        [NotifyPropertyChangedFor(nameof(ShowUsedGear))]
+        [NotifyPropertyChangedFor(nameof(ShowWarranty))]
         private SaleType _recordType = SaleType.Standard;
 
         public int SelectedRecordTypeIndex
         {
-            get => RecordType == SaleType.Standard ? 0 : 1;
-            set => RecordType = value == 0 ? SaleType.Standard : SaleType.Warranty;
+            get => RecordType == SaleType.Standard ? 0 : (RecordType == SaleType.Warranty ? 1 : 2);
+            set => RecordType = value == 0 ? SaleType.Standard : (value == 1 ? SaleType.Warranty : SaleType.Ebay);
         }
+
+        public string InvoiceLabel => RecordType == SaleType.Ebay ? "Order Code" : "Invoice Number";
+        public string InvoicePlaceholder => RecordType == SaleType.Ebay ? "e.g. EBAY-1001" : "e.g. INV-1001";
+
+        public bool ShowCategory => RecordType == SaleType.Standard || RecordType == SaleType.Ebay;
+        public bool ShowUsedGear => RecordType == SaleType.Standard || RecordType == SaleType.Ebay;
+        public bool ShowWarranty => RecordType == SaleType.Warranty;
         
         // Standard sale specific
         [ObservableProperty] private bool _isUsedGear;
@@ -160,6 +174,8 @@ namespace SalesLedger.Core.ViewModels
         public LedgerDashboardViewModel(MainWindowViewModel mainVm)
         {
             _mainVm = mainVm ?? throw new ArgumentNullException(nameof(mainVm));
+            RecentSalesView = new DataGridCollectionView(RecentSales);
+            RecentSalesView.SortDescriptions.Add(DataGridSortDescription.FromPath("TransactionDate", System.ComponentModel.ListSortDirection.Descending));
             LoadData();
         }
 
@@ -313,6 +329,7 @@ namespace SalesLedger.Core.ViewModels
                 {
                     "Standard (New)" => query.Where(x => x.RecordType == SaleType.Standard && (x is StandardSale s && !s.IsUsedGear)),
                     "Standard (Used)" => query.Where(x => x.RecordType == SaleType.Standard && (x is StandardSale s && s.IsUsedGear)),
+                    "eBay" => query.Where(x => x.RecordType == SaleType.Ebay),
                     "Warranty" => query.Where(x => x.RecordType == SaleType.Warranty),
                     "Return Offset" => query.Where(x => x.RecordType == SaleType.ReturnOffset),
                     _ => query
@@ -395,6 +412,10 @@ namespace SalesLedger.Core.ViewModels
             {
                 IsUsedGear = std.IsUsedGear;
             }
+            else if (target is EbaySale ebay)
+            {
+                IsUsedGear = ebay.IsUsedGear;
+            }
             else if (target is WarrantySale war)
             {
                 WarrantyTypeName = war.WarrantyTypeName;
@@ -424,27 +445,52 @@ namespace SalesLedger.Core.ViewModels
             }
 
             SaleRecord sale;
+            bool typeChanged = false;
+            SaleRecord? existing = null;
             if (IsEditing && _editingSaleId.HasValue)
             {
-                var existing = _mainVm.LiteDb.Sales.FindById(_editingSaleId.Value);
+                existing = _mainVm.LiteDb.Sales.FindById(_editingSaleId.Value);
                 if (existing == null || existing.Status == PayoutStatus.ReturnedBeforePayout)
                 {
                     IsSaleDialogVisible = false;
                     return;
                 }
-                sale = existing;
+                
+                if (existing.RecordType != RecordType)
+                {
+                    typeChanged = true;
+                }
             }
-            else
+
+            if (typeChanged || !IsEditing)
             {
                 if (RecordType == SaleType.Standard)
                 {
                     sale = new StandardSale();
                 }
-                else
+                else if (RecordType == SaleType.Warranty)
                 {
                     sale = new WarrantySale();
                 }
-                sale.Status = PayoutStatus.Pending;
+                else
+                {
+                    sale = new EbaySale();
+                }
+                
+                if (IsEditing && existing != null)
+                {
+                    sale.Id = existing.Id;
+                    sale.Status = existing.Status;
+                    sale.AssociatedReportId = existing.AssociatedReportId;
+                }
+                else
+                {
+                    sale.Status = PayoutStatus.Pending;
+                }
+            }
+            else
+            {
+                sale = existing!;
             }
 
             sale.InvoiceNumber = InvoiceNumber.Trim();
@@ -457,6 +503,10 @@ namespace SalesLedger.Core.ViewModels
             if (sale is StandardSale std)
             {
                 std.IsUsedGear = IsUsedGear;
+            }
+            else if (sale is EbaySale ebay)
+            {
+                ebay.IsUsedGear = IsUsedGear;
             }
             else if (sale is WarrantySale war)
             {

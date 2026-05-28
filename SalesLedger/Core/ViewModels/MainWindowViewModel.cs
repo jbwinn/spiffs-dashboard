@@ -65,6 +65,7 @@ namespace SalesLedger.Core.ViewModels
         {
             if (CurrentActiveWorkspace == DashboardViewModel)
             {
+                SettingsViewModel.LoadSettings();
                 CurrentActiveWorkspace = SettingsViewModel;
                 SettingsButtonText = "Dashboard Panel";
             }
@@ -86,6 +87,12 @@ namespace SalesLedger.Core.ViewModels
         {
             try
             {
+                var settings = LiteDb.GetUserSettings();
+                if (!settings.AutoUpdateEnabled)
+                {
+                    return;
+                }
+
                 // Retrieve the update source dynamically targeting GitHub Releases.
                 // Replace the repository URL with the production repository deployment target.
                 var updateSource = new GithubSource("https://github.com/jbwinn/spiffs-dashboard", null, false);

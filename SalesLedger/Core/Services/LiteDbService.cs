@@ -13,9 +13,14 @@ namespace SalesLedger.Core.Services
 
         public LiteDbService()
         {
+#if DEBUG
+            var folderName = "SalesLedgerDev";
+#else
+            var folderName = "SalesLedger";
+#endif
             var appDataDir = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "SalesLedger"
+                folderName
             );
             Directory.CreateDirectory(appDataDir);
             _dbPath = Path.Combine(appDataDir, "salesledger.db");

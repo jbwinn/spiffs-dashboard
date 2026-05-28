@@ -13,9 +13,14 @@ namespace SalesLedger.Core.Services
 
         public DuckDbService()
         {
+#if DEBUG
+            var folderName = "SalesLedgerDev";
+#else
+            var folderName = "SalesLedger";
+#endif
             var appDataDir = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "SalesLedger"
+                folderName
             );
             Directory.CreateDirectory(appDataDir);
             _dbPath = Path.Combine(appDataDir, "analytics.duckdb");
@@ -80,6 +85,10 @@ namespace SalesLedger.Core.Services
             if (sale is StandardSale standardSale)
             {
                 isUsedGear = standardSale.IsUsedGear;
+            }
+            else if (sale is EbaySale ebaySale)
+            {
+                isUsedGear = ebaySale.IsUsedGear;
             }
 
             // Extract warranty sale parameters

@@ -83,9 +83,9 @@ namespace SalesLedger.Core.Services
             cmd.CommandText = @"
                 SELECT 
                     COALESCE(SUM(SalePrice), 0.0) AS TotalSales,
-                    COALESCE(SUM(CASE WHEN RecordType = 'Standard' THEN 1 WHEN RecordType = 'ReturnOffset' THEN -1 ELSE 0 END), 0) AS TotalUnits,
+                    COALESCE(SUM(CASE WHEN RecordType = 'Standard' OR RecordType = 'Ebay' THEN 1 WHEN RecordType = 'ReturnOffset' THEN -1 ELSE 0 END), 0) AS TotalUnits,
                     COALESCE(SUM(CalculatedCommission), 0.0) AS TotalCommission,
-                    COALESCE(AVG(CASE WHEN RecordType = 'Standard' AND SalePrice > 0 THEN SalePrice ELSE NULL END), 0.0) AS ASP
+                    COALESCE(AVG(CASE WHEN (RecordType = 'Standard' OR RecordType = 'Ebay') AND SalePrice > 0 THEN SalePrice ELSE NULL END), 0.0) AS ASP
                 FROM sales
                 WHERE TransactionDate >= $start AND TransactionDate <= $end AND Status != 'ReturnedBeforePayout';";
 
@@ -119,7 +119,7 @@ namespace SalesLedger.Core.Services
                     date_trunc('{scale}', TransactionDate) AS BucketDate,
                     COALESCE(Category, 'Uncategorized') AS CategoryName,
                     COALESCE(SUM(SalePrice), 0.0) AS Revenue,
-                    COALESCE(SUM(CASE WHEN RecordType = 'Standard' THEN 1 WHEN RecordType = 'ReturnOffset' THEN -1 ELSE 0 END), 0) AS Quantity,
+                    COALESCE(SUM(CASE WHEN RecordType = 'Standard' OR RecordType = 'Ebay' THEN 1 WHEN RecordType = 'ReturnOffset' THEN -1 ELSE 0 END), 0) AS Quantity,
                     COALESCE(SUM(CalculatedCommission), 0.0) AS Commission,
                     COALESCE(MAX(SalePrice), 0.0) AS MaxSalePrice
                 FROM sales

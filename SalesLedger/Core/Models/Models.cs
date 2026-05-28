@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace SalesLedger.Core.Models
 {
-    public enum SaleType { Standard, Warranty, ReturnOffset }
+    public enum SaleType { Standard, Warranty, ReturnOffset, Ebay }
     public enum PayoutStatus { Pending, Paid, ReturnedBeforePayout }
     public enum PayoutType { PercentageOfPrice, FlatRate, PercentageOfNetProfit }
     public enum RuleScope { AllUsed, AllWarranty, CategorySpecific }
@@ -43,6 +43,12 @@ namespace SalesLedger.Core.Models
         public ReturnOffsetSale() => RecordType = SaleType.ReturnOffset;
     }
 
+    public class EbaySale : SaleRecord
+    {
+        public bool IsUsedGear { get; set; }
+        public EbaySale() => RecordType = SaleType.Ebay;
+    }
+
     public class PayoutReport
     {
         public Guid Id { get; set; } = Guid.NewGuid();
@@ -59,6 +65,7 @@ namespace SalesLedger.Core.Models
         public List<AppCategory> ProductCategories { get; set; } = new();
         public List<AppWarrantyType> WarrantyTypes { get; set; } = new();
         public List<CommissionRule> ActiveRules { get; set; } = new();
+        public bool AutoUpdateEnabled { get; set; } = true;
     }
 
     public class AppCategory

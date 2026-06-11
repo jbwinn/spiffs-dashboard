@@ -12,7 +12,7 @@ namespace SalesLedger.Core.ViewModels
     {
         // Core Services
         public LiteDbService LiteDb { get; }
-        public DuckDbService DuckDb { get; }
+        private DuckDbService DuckDb { get; }
         public SyncPipeline Sync { get; }
         public PayoutLedgerService PayoutService { get; }
         public AnalyticsService Analytics { get; }
@@ -20,8 +20,8 @@ namespace SalesLedger.Core.ViewModels
         public CommissionProcessor CommissionProc { get; }
 
         // Workspaces
-        public LedgerDashboardViewModel DashboardViewModel { get; }
-        public FullScreenSettingsViewModel SettingsViewModel { get; }
+        private LedgerDashboardViewModel DashboardViewModel { get; }
+        private FullScreenSettingsViewModel SettingsViewModel { get; }
 
         [ObservableProperty]
         private ObservableObject _currentActiveWorkspace;
@@ -61,7 +61,7 @@ namespace SalesLedger.Core.ViewModels
         }
 
         [RelayCommand]
-        public void ToggleWorkspace()
+        private void ToggleWorkspace()
         {
             if (CurrentActiveWorkspace == DashboardViewModel)
             {
@@ -110,47 +110,26 @@ namespace SalesLedger.Core.ViewModels
             }
         }
 
-        private bool _isUpdateDialogVisible;
-        public bool IsUpdateDialogVisible
-        {
-            get => _isUpdateDialogVisible;
-            set => SetProperty(ref _isUpdateDialogVisible, value);
-        }
+        [ObservableProperty]
+        public partial bool IsUpdateDialogVisible { get; set; }
 
-        private string _updateMessageText = string.Empty;
-        public string UpdateMessageText
-        {
-            get => _updateMessageText;
-            set => SetProperty(ref _updateMessageText, value);
-        }
+        [ObservableProperty]
+        public partial string UpdateMessageText { get; set; } = string.Empty;
 
-        private bool _isUpdateInstalling;
-        public bool IsUpdateInstalling
-        {
-            get => _isUpdateInstalling;
-            set
-            {
-                if (SetProperty(ref _isUpdateInstalling, value))
-                {
-                    OnPropertyChanged(nameof(IsNotUpdateInstalling));
-                }
-            }
-        }
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(IsNotUpdateInstalling))]
+        private partial bool IsUpdateInstalling { get; set; }
 
-        public bool IsNotUpdateInstalling => !_isUpdateInstalling;
+        public bool IsNotUpdateInstalling => !IsUpdateInstalling;
 
         public UpdateManager? UpdateManager { get; set; }
         public UpdateInfo? UpdateInfo { get; set; }
 
-        private IRelayCommand? _closeUpdateDialogCommand;
-        public IRelayCommand CloseUpdateDialogCommand => 
-            _closeUpdateDialogCommand ??= new RelayCommand(() => IsUpdateDialogVisible = false);
+        [RelayCommand]
+        private void CloseUpdateDialog() => IsUpdateDialogVisible = false;
 
-        private IAsyncRelayCommand? _installUpdateCommand;
-        public IAsyncRelayCommand InstallUpdateCommand => 
-            _installUpdateCommand ??= new AsyncRelayCommand(InstallUpdateAsync);
-
-        public async Task InstallUpdateAsync()
+        [RelayCommand]
+        private async Task InstallUpdate()
         {
             if (IsUpdateInstalling) return;
             IsUpdateInstalling = true;

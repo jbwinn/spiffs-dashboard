@@ -11,7 +11,7 @@
              FontFamily="{DynamicResource FontPrimary}">
 
     <Grid>
-        <TabControl Margin="24" Theme="{StaticResource {x:Type TabControl}}">
+        <TabControl Margin="24">
         <TabControl.Styles>
             <Style Selector="TabItem">
                 <Setter Property="FontSize" Value="14"/>
@@ -33,7 +33,7 @@
                     
                     <StackPanel Spacing="6">
                         <TextBlock Text="User Display Name" Foreground="{DynamicResource TextPrimary}" FontWeight="SemiBold" FontSize="12"/>
-                        <TextBox Text="{Binding UserDisplayName, Mode=TwoWay}" PlaceholderText="Enter your full name" Theme="{StaticResource {x:Type TextBox}}"/>
+                        <TextBox Text="{Binding UserDisplayName, Mode=TwoWay}" PlaceholderText="Enter your full name"/>
                     </StackPanel>
 
                     <!-- Save Status Display -->

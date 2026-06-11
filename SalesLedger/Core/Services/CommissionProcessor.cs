@@ -10,7 +10,7 @@ namespace SalesLedger.Core.Services
         public decimal CalculateLineItem(SaleRecord sale, List<CommissionRule> activeRules)
         {
             // Return offsets carry their own fixed pre-calculated negative commission
-            if (sale is ReturnOffsetSale)
+            if (sale.IsReturn || sale is ReturnOffsetSale)
             {
                 return sale.CalculatedCommission;
             }
@@ -20,23 +20,14 @@ namespace SalesLedger.Core.Services
 
             foreach (var rule in waterfall)
             {
-                bool isMatch = false;
-
-                switch (rule.Scope)
+                bool isMatch = rule.Scope switch
                 {
-                    case RuleScope.AllWarranty:
-                        isMatch = (sale is WarrantySale);
-                        break;
-                    case RuleScope.AllUsed:
-                        isMatch = (sale is StandardSale standardItem && standardItem.IsUsedGear);
-                        break;
-                    case RuleScope.AllEbay:
-                        isMatch = (sale is EbaySale);
-                        break;
-                    case RuleScope.CategorySpecific:
-                        isMatch = string.Equals(sale.Category, rule.TargetCategory, StringComparison.OrdinalIgnoreCase);
-                        break;
-                }
+                    RuleScope.AllWarranty => sale is WarrantySale,
+                    RuleScope.AllUsed => sale is StandardSale { IsUsedGear: true },
+                    RuleScope.AllEbay => sale is EbaySale,
+                    RuleScope.CategorySpecific => string.Equals(sale.Category, rule.TargetCategory, StringComparison.OrdinalIgnoreCase),
+                    _ => false
+                };
 
                 if (isMatch)
                 {

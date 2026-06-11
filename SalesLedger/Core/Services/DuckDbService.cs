@@ -8,7 +8,6 @@ namespace SalesLedger.Core.Services
 {
     public class DuckDbService : IDisposable
     {
-        private readonly string _dbPath;
         private readonly string _connectionString;
 
         public DuckDbService()
@@ -23,20 +22,19 @@ namespace SalesLedger.Core.Services
                 folderName
             );
             Directory.CreateDirectory(appDataDir);
-            _dbPath = Path.Combine(appDataDir, "analytics.duckdb");
-            _connectionString = $"Data Source={_dbPath}";
+            var dbPath = Path.Combine(appDataDir, "analytics.duckdb");
+            _connectionString = $"Data Source={dbPath}";
             InitializeTable();
         }
 
         public DuckDbService(string customDbPath)
         {
-            _dbPath = customDbPath;
             var directory = Path.GetDirectoryName(customDbPath);
             if (!string.IsNullOrEmpty(directory))
             {
                 Directory.CreateDirectory(directory);
             }
-            _connectionString = $"Data Source={_dbPath}";
+            _connectionString = $"Data Source={customDbPath}";
             InitializeTable();
         }
 
@@ -71,7 +69,9 @@ namespace SalesLedger.Core.Services
                     ManufacturerPrice DOUBLE,
                     NetMargin DOUBLE,
                     AssociatedReportId VARCHAR
-                );";
+                );
+                ALTER TABLE sales ADD COLUMN IF NOT EXISTS IsReturn BOOLEAN;
+                ALTER TABLE sales ADD COLUMN IF NOT EXISTS OriginalSaleId VARCHAR;";
             cmd.ExecuteNonQuery();
         }
 
@@ -106,11 +106,11 @@ namespace SalesLedger.Core.Services
                 INSERT INTO sales (
                     Id, RecordType, Status, TransactionDate, InvoiceNumber, Sku, ProductName, 
                     Category, SalePrice, CalculatedCommission, IsUsedGear, WarrantyTypeName, 
-                    ManufacturerPrice, NetMargin, AssociatedReportId
+                    ManufacturerPrice, NetMargin, AssociatedReportId, IsReturn, OriginalSaleId
                 ) VALUES (
                     $id, $recordType, $status, $transactionDate, $invoiceNumber, $sku, $productName, 
                     $category, $salePrice, $calculatedCommission, $isUsedGear, $warrantyTypeName, 
-                    $manufacturerPrice, $netMargin, $associatedReportId
+                    $manufacturerPrice, $netMargin, $associatedReportId, $isReturn, $originalSaleId
                 ) ON CONFLICT (Id) DO UPDATE SET 
                     RecordType = excluded.RecordType,
                     Status = excluded.Status,
@@ -125,22 +125,26 @@ namespace SalesLedger.Core.Services
                     WarrantyTypeName = excluded.WarrantyTypeName,
                     ManufacturerPrice = excluded.ManufacturerPrice,
                     NetMargin = excluded.NetMargin,
-                    AssociatedReportId = excluded.AssociatedReportId;";
+                    AssociatedReportId = excluded.AssociatedReportId,
+                    IsReturn = excluded.IsReturn,
+                    OriginalSaleId = excluded.OriginalSaleId;";
 
             cmd.Parameters.Add(new DuckDBParameter("id", sale.Id.ToString()));
             cmd.Parameters.Add(new DuckDBParameter("recordType", sale.RecordType.ToString()));
             cmd.Parameters.Add(new DuckDBParameter("status", sale.Status.ToString()));
             cmd.Parameters.Add(new DuckDBParameter("transactionDate", sale.TransactionDate));
-            cmd.Parameters.Add(new DuckDBParameter("invoiceNumber", sale.InvoiceNumber ?? string.Empty));
-            cmd.Parameters.Add(new DuckDBParameter("sku", sale.Sku ?? string.Empty));
-            cmd.Parameters.Add(new DuckDBParameter("productName", sale.ProductName ?? string.Empty));
-            cmd.Parameters.Add(new DuckDBParameter("category", sale.Category ?? string.Empty));
+            cmd.Parameters.Add(new DuckDBParameter("invoiceNumber", sale.InvoiceNumber));
+            cmd.Parameters.Add(new DuckDBParameter("sku", sale.Sku));
+            cmd.Parameters.Add(new DuckDBParameter("productName", sale.ProductName));
+            cmd.Parameters.Add(new DuckDBParameter("category", sale.Category));
             cmd.Parameters.Add(new DuckDBParameter("salePrice", (double)sale.SalePrice));
             cmd.Parameters.Add(new DuckDBParameter("calculatedCommission", (double)sale.CalculatedCommission));
             cmd.Parameters.Add(new DuckDBParameter("isUsedGear", isUsedGear));
             cmd.Parameters.Add(new DuckDBParameter("warrantyTypeName", warrantyTypeName));
             cmd.Parameters.Add(new DuckDBParameter("manufacturerPrice", manufacturerPrice));
             cmd.Parameters.Add(new DuckDBParameter("netMargin", netMargin));
+            cmd.Parameters.Add(new DuckDBParameter("isReturn", sale.IsReturn));
+            cmd.Parameters.Add(new DuckDBParameter("originalSaleId", sale.OriginalSaleId?.ToString() ?? string.Empty));
             cmd.Parameters.Add(new DuckDBParameter("associatedReportId", sale.AssociatedReportId?.ToString() ?? string.Empty));
 
             cmd.ExecuteNonQuery();

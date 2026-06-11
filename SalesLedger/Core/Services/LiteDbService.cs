@@ -10,7 +10,6 @@ namespace SalesLedger.Core.Services
     public class LiteDbService : IDisposable
     {
         private readonly LiteDatabase _db;
-        private readonly string _dbPath;
 
         public LiteDbService()
         {
@@ -24,19 +23,22 @@ namespace SalesLedger.Core.Services
                 folderName
             );
             Directory.CreateDirectory(appDataDir);
-            _dbPath = Path.Combine(appDataDir, "salesledger.db");
+            var dbPath = Path.Combine(appDataDir, "salesledger.db");
 
             // Setup polymorphic mapping for LiteDB
             var mapper = new BsonMapper();
             mapper.Entity<SaleRecord>().Id(x => x.Id);
 
-            _db = new LiteDatabase(_dbPath, mapper);
+            _db = new LiteDatabase(dbPath, mapper);
             InitializeDefaultSettings();
+
+#if DEBUG
+            SeedDebugData(force: false);
+#endif
         }
 
         public LiteDbService(string customDbPath)
         {
-            _dbPath = customDbPath;
             var directory = Path.GetDirectoryName(customDbPath);
             if (!string.IsNullOrEmpty(directory))
             {
@@ -46,7 +48,7 @@ namespace SalesLedger.Core.Services
             var mapper = new BsonMapper();
             mapper.Entity<SaleRecord>().Id(x => x.Id);
 
-            _db = new LiteDatabase(_dbPath, mapper);
+            _db = new LiteDatabase(customDbPath, mapper);
             InitializeDefaultSettings();
         }
 
@@ -199,14 +201,12 @@ namespace SalesLedger.Core.Services
                         if (rule.Scope == RuleScope.AllEbay) hasEbayRule = true;
 
                         // Upgrade old defaults
-                        if (rule.RuleName == "Default Used Gear Rule" && rule.RuleValue == 0.15m && rule.CalculationType == PayoutType.PercentageOfPrice)
+                        if (rule is { RuleName: "Default Used Gear Rule", RuleValue: 0.15m, CalculationType: PayoutType.PercentageOfPrice })
                         {
                             rule.RuleValue = 0.03m;
                             modified = true;
                         }
-                        else if (rule.RuleName == "Default Warranty Rule" && 
-                                 ((rule.RuleValue == 25.00m && rule.CalculationType == PayoutType.FlatRate) || 
-                                  (rule.RuleValue == 0.10m && rule.CalculationType == PayoutType.PercentageOfPrice)))
+                        else if (rule is { RuleName: "Default Warranty Rule" } and ({ RuleValue: 25.00m, CalculationType: PayoutType.FlatRate } or { RuleValue: 0.10m, CalculationType: PayoutType.PercentageOfPrice }))
                         {
                             rule.CalculationType = PayoutType.PercentageOfNetProfit;
                             rule.RuleValue = 0.10m;
@@ -316,34 +316,31 @@ namespace SalesLedger.Core.Services
             {
                 Id = Guid.NewGuid(),
                 UserDisplayName = "Sales Representative",
-                ProductCategories = new List<AppCategory>
-                {
-                    new AppCategory { Name = "Lens", IsSystemPreset = true, IsActive = true },
-                    new AppCategory { Name = "SLR", IsSystemPreset = true, IsActive = true },
-                    new AppCategory { Name = "Digital - SLR", IsSystemPreset = true, IsActive = true },
-                    new AppCategory { Name = "Mirrorless", IsSystemPreset = true, IsActive = true },
-                    new AppCategory { Name = "TLR", IsSystemPreset = true, IsActive = true },
-                    new AppCategory { Name = "Medium Format", IsSystemPreset = true, IsActive = true },
-                    new AppCategory { Name = "Point and Shoot", IsSystemPreset = true, IsActive = true },
-                    new AppCategory { Name = "Rangefinder", IsSystemPreset = true, IsActive = true },
-                    new AppCategory { Name = "Camcorder", IsSystemPreset = true, IsActive = true },
-                    new AppCategory { Name = "Bridge Camera", IsSystemPreset = true, IsActive = true },
-                    new AppCategory { Name = "Light Meter/Flash", IsSystemPreset = true, IsActive = true },
-                    new AppCategory { Name = "Tripod", IsSystemPreset = true, IsActive = true },
-                    new AppCategory { Name = "Converter/Extender", IsSystemPreset = true, IsActive = true },
-                    new AppCategory { Name = "Bag/Accessory", IsSystemPreset = true, IsActive = true }
-                },
-                WarrantyTypes = new List<AppWarrantyType>
-                {
-                    new AppWarrantyType { Name = "Sony", IsSystemPreset = true, IsActive = true },
-                    new AppWarrantyType { Name = "Fuji", IsSystemPreset = true, IsActive = true },
-                    new AppWarrantyType { Name = "Nikon", IsSystemPreset = true, IsActive = true },
-                    new AppWarrantyType { Name = "Mack", IsSystemPreset = true, IsActive = true },
-                    new AppWarrantyType { Name = "Canon", IsSystemPreset = true, IsActive = true }
-                },
-                ActiveRules = new List<CommissionRule>
-                {
-                    new CommissionRule
+                ProductCategories = [
+                    new() { Name = "Lens", IsSystemPreset = true, IsActive = true },
+                    new() { Name = "SLR", IsSystemPreset = true, IsActive = true },
+                    new() { Name = "Digital - SLR", IsSystemPreset = true, IsActive = true },
+                    new() { Name = "Mirrorless", IsSystemPreset = true, IsActive = true },
+                    new() { Name = "TLR", IsSystemPreset = true, IsActive = true },
+                    new() { Name = "Medium Format", IsSystemPreset = true, IsActive = true },
+                    new() { Name = "Point and Shoot", IsSystemPreset = true, IsActive = true },
+                    new() { Name = "Rangefinder", IsSystemPreset = true, IsActive = true },
+                    new() { Name = "Camcorder", IsSystemPreset = true, IsActive = true },
+                    new() { Name = "Bridge Camera", IsSystemPreset = true, IsActive = true },
+                    new() { Name = "Light Meter/Flash", IsSystemPreset = true, IsActive = true },
+                    new() { Name = "Tripod", IsSystemPreset = true, IsActive = true },
+                    new() { Name = "Converter/Extender", IsSystemPreset = true, IsActive = true },
+                    new() { Name = "Bag/Accessory", IsSystemPreset = true, IsActive = true }
+                ],
+                WarrantyTypes = [
+                    new() { Name = "Sony", IsSystemPreset = true, IsActive = true },
+                    new() { Name = "Fuji", IsSystemPreset = true, IsActive = true },
+                    new() { Name = "Nikon", IsSystemPreset = true, IsActive = true },
+                    new() { Name = "Mack", IsSystemPreset = true, IsActive = true },
+                    new() { Name = "Canon", IsSystemPreset = true, IsActive = true }
+                ],
+                ActiveRules = [
+                    new()
                     {
                         RuleName = "Default Used Gear Rule",
                         PriorityOrder = 0,
@@ -351,7 +348,7 @@ namespace SalesLedger.Core.Services
                         CalculationType = PayoutType.PercentageOfPrice,
                         RuleValue = 0.03m // 3%
                     },
-                    new CommissionRule
+                    new()
                     {
                         RuleName = "Default Warranty Rule",
                         PriorityOrder = 1,
@@ -359,7 +356,7 @@ namespace SalesLedger.Core.Services
                         CalculationType = PayoutType.PercentageOfNetProfit,
                         RuleValue = 0.10m // 10%
                     },
-                    new CommissionRule
+                    new()
                     {
                         RuleName = "Default eBay Rule",
                         PriorityOrder = 2,
@@ -367,7 +364,7 @@ namespace SalesLedger.Core.Services
                         CalculationType = PayoutType.PercentageOfPrice,
                         RuleValue = 0.10m // 10%
                     },
-                    new CommissionRule
+                    new()
                     {
                         RuleName = "Lens Standard Rule",
                         PriorityOrder = 3,
@@ -376,7 +373,7 @@ namespace SalesLedger.Core.Services
                         CalculationType = PayoutType.PercentageOfPrice,
                         RuleValue = 0.08m // 8%
                     },
-                    new CommissionRule
+                    new()
                     {
                         RuleName = "Mirrorless Standard Rule",
                         PriorityOrder = 4,
@@ -385,7 +382,7 @@ namespace SalesLedger.Core.Services
                         CalculationType = PayoutType.PercentageOfPrice,
                         RuleValue = 0.05m // 5%
                     }
-                }
+                ]
             };
         }
 
@@ -393,5 +390,102 @@ namespace SalesLedger.Core.Services
         {
             _db.Dispose();
         }
+
+#if DEBUG
+        public void SeedDebugData(bool force = false)
+        {
+            if (!force && Sales.Exists(Query.All()))
+            {
+                return;
+            }
+
+            if (force)
+            {
+                Sales.DeleteAll();
+            }
+
+            var now = DateTime.Now;
+            var settings = GetUserSettings();
+            var rules = settings.ActiveRules ?? [];
+            var commissionProc = new CommissionProcessor();
+
+            var sampleSales = new List<SaleRecord>
+            {
+                new StandardSale
+                {
+                    InvoiceNumber = "INV-2026-001",
+                    Sku = "SONY-A7IV",
+                    ProductName = "Sony Alpha 7 IV Mirrorless Camera",
+                    Category = "Mirrorless",
+                    SalePrice = 2499.99m,
+                    TransactionDate = now.AddDays(-15),
+                    Status = PayoutStatus.Pending,
+                    IsUsedGear = false
+                },
+                new StandardSale
+                {
+                    InvoiceNumber = "INV-2026-002",
+                    Sku = "CANON-2470U",
+                    ProductName = "Canon EF 24-70mm f/2.8L II USM (Used)",
+                    Category = "Lens",
+                    SalePrice = 1299.00m,
+                    TransactionDate = now.AddDays(-12),
+                    Status = PayoutStatus.Pending,
+                    IsUsedGear = true
+                },
+                new WarrantySale
+                {
+                    InvoiceNumber = "INV-2026-003",
+                    Sku = "WRY-SONY-3Y",
+                    ProductName = "3-Year Camera Accidental Protection Plan",
+                    Category = "Warranty",
+                    SalePrice = 299.99m,
+                    TransactionDate = now.AddDays(-10),
+                    Status = PayoutStatus.Pending,
+                    WarrantyTypeName = "Sony",
+                    ManufacturerPrice = 120.00m
+                },
+                new EbaySale
+                {
+                    InvoiceNumber = "EBAY-99821",
+                    Sku = "NIKON-D850-U",
+                    ProductName = "Nikon D850 DSLR Camera Body",
+                    Category = "Digital - SLR",
+                    SalePrice = 1899.50m,
+                    TransactionDate = now.AddDays(-8),
+                    Status = PayoutStatus.Pending,
+                    IsUsedGear = true
+                },
+                new StandardSale
+                {
+                    InvoiceNumber = "INV-2026-004",
+                    Sku = "FUJI-XT5",
+                    ProductName = "Fujifilm X-T5 Mirrorless Camera",
+                    Category = "Mirrorless",
+                    SalePrice = 1699.99m,
+                    TransactionDate = now.AddDays(-5),
+                    Status = PayoutStatus.Pending,
+                    IsUsedGear = false
+                },
+                new StandardSale
+                {
+                    InvoiceNumber = "INV-2026-005",
+                    Sku = "SONY-70200",
+                    ProductName = "Sony FE 70-200mm f/2.8 GM OSS II",
+                    Category = "Lens",
+                    SalePrice = 2799.00m,
+                    TransactionDate = now.AddDays(-3),
+                    Status = PayoutStatus.Pending,
+                    IsUsedGear = false
+                }
+            };
+
+            foreach (var sale in sampleSales)
+            {
+                sale.CalculatedCommission = commissionProc.CalculateLineItem(sale, rules);
+                Sales.Insert(sale);
+            }
+        }
+#endif
     }
 }

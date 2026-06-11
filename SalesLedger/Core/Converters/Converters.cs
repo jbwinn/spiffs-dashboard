@@ -10,7 +10,7 @@ namespace SalesLedger.Core.Converters
     {
         public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
-            if (value is bool b && b)
+            if (value is true)
             {
                 return SolidColorBrush.Parse(AppTheme.TextPrimary); // Active color
             }
@@ -27,7 +27,7 @@ namespace SalesLedger.Core.Converters
     {
         public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
-            if (value is bool b && b)
+            if (value is true)
             {
                 return new TextDecorationCollection();
             }
@@ -44,7 +44,7 @@ namespace SalesLedger.Core.Converters
     {
         public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
-            if (value is bool b && b)
+            if (value is true)
             {
                 return SolidColorBrush.Parse(AppTheme.AccentBlue); // Preset color
             }
@@ -61,7 +61,7 @@ namespace SalesLedger.Core.Converters
     {
         public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
-            if (value is bool b && b)
+            if (value is true)
             {
                 return "PRESET";
             }
@@ -78,7 +78,7 @@ namespace SalesLedger.Core.Converters
     {
         public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
-            if (value is bool b && b)
+            if (value is true)
             {
                 return "Deactivate";
             }
@@ -104,7 +104,7 @@ namespace SalesLedger.Core.Converters
 
         public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
-            if (value is bool b && b && parameter is string target)
+            if (value is true && parameter is string target)
             {
                 if (targetType.IsEnum)
                 {
@@ -147,7 +147,7 @@ namespace SalesLedger.Core.Converters
     {
         public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
-            if (value is bool isError && isError)
+            if (value is true)
             {
                 return SolidColorBrush.Parse(AppTheme.AccentRed); // Red
             }

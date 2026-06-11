@@ -4,16 +4,10 @@ using SalesLedger.Core.Models;
 
 namespace SalesLedger.Core.Services
 {
-    public class PayoutLedgerService
+    public class PayoutLedgerService(LiteDbService dbService, SyncPipeline syncPipeline)
     {
-        private readonly LiteDbService _dbService;
-        private readonly SyncPipeline _syncPipeline;
-
-        public PayoutLedgerService(LiteDbService dbService, SyncPipeline syncPipeline)
-        {
-            _dbService = dbService ?? throw new ArgumentNullException(nameof(dbService));
-            _syncPipeline = syncPipeline ?? throw new ArgumentNullException(nameof(syncPipeline));
-        }
+        private readonly LiteDbService _dbService = dbService ?? throw new ArgumentNullException(nameof(dbService));
+        private readonly SyncPipeline _syncPipeline = syncPipeline ?? throw new ArgumentNullException(nameof(syncPipeline));
 
         public void ProcessReturn(Guid originalSaleId)
         {
@@ -40,8 +34,8 @@ namespace SalesLedger.Core.Services
             {
                 // Check if this sale has already been returned (post-payout offset check)
                 var existingOffset = _dbService.Sales.Find(x => 
-                    x.RecordType == SaleType.ReturnOffset && 
-                    ((ReturnOffsetSale)x).OriginalSaleId == originalSale.Id).Any();
+                    x.IsReturn && 
+                    x.OriginalSaleId == originalSale.Id).Any();
                 
                 if (existingOffset)
                 {
@@ -50,19 +44,46 @@ namespace SalesLedger.Core.Services
                 }
 
                 // Branch B: Post-payout legacy balance ledger offset injection
-                var offset = new ReturnOffsetSale
+                // Create a return record of the exact same concrete class as the original sale
+                SaleRecord offset;
+                if (originalSale is StandardSale std)
                 {
-                    Id = Guid.NewGuid(),
-                    OriginalSaleId = originalSale.Id,
-                    TransactionDate = DateTime.UtcNow, // Belongs to current open calculation pool
-                    InvoiceNumber = originalSale.InvoiceNumber,
-                    Sku = originalSale.Sku,
-                    ProductName = $"[RETURN OFFSET] - {originalSale.ProductName}",
-                    Category = originalSale.Category,
-                    SalePrice = -originalSale.SalePrice, // Balanced accounting negative entry
-                    CalculatedCommission = -originalSale.CalculatedCommission, // Balances total upcoming payout
-                    Status = PayoutStatus.Pending
-                };
+                    offset = new StandardSale
+                    {
+                        IsUsedGear = std.IsUsedGear
+                    };
+                }
+                else if (originalSale is EbaySale ebay)
+                {
+                    offset = new EbaySale
+                    {
+                        IsUsedGear = ebay.IsUsedGear
+                    };
+                }
+                else if (originalSale is WarrantySale war)
+                {
+                    offset = new WarrantySale
+                    {
+                        WarrantyTypeName = war.WarrantyTypeName,
+                        ManufacturerPrice = -war.ManufacturerPrice
+                    };
+                }
+                else
+                {
+                    offset = new StandardSale();
+                }
+
+                offset.Id = Guid.NewGuid();
+                offset.IsReturn = true;
+                offset.OriginalSaleId = originalSale.Id;
+                offset.TransactionDate = DateTime.Now;
+                offset.InvoiceNumber = originalSale.InvoiceNumber;
+                offset.Sku = originalSale.Sku;
+                offset.ProductName = $"[RETURN] - {originalSale.ProductName}";
+                offset.Category = originalSale.Category;
+                offset.SalePrice = -originalSale.SalePrice;
+                offset.CalculatedCommission = -originalSale.CalculatedCommission;
+                offset.Status = PayoutStatus.Pending;
                 
                 _dbService.Sales.Insert(offset);
                 
@@ -74,20 +95,32 @@ namespace SalesLedger.Core.Services
         public PayoutReport CloseCurrentPayPeriod(string reportName)
         {
             var pendingSales = _dbService.Sales.Find(x => x.Status == PayoutStatus.Pending).ToList();
+            var returnedBeforePayoutSales = _dbService.Sales.Find(x => x.Status == PayoutStatus.ReturnedBeforePayout && x.AssociatedReportId == null).ToList();
+
+            var allPeriodSales = pendingSales.Concat(returnedBeforePayoutSales).ToList();
 
             var report = new PayoutReport
             {
                 Id = Guid.NewGuid(),
                 ReportGeneratedTimestamp = DateTime.UtcNow,
                 ReportName = reportName,
-                TotalCommissionCalculated = pendingSales.Sum(s => s.CalculatedCommission),
-                LockedSaleIds = pendingSales.Select(s => s.Id).ToList()
+                TotalCommissionCalculated = pendingSales.Sum(s => s.CalculatedCommission), // Exclude ReturnedBeforePayout sales (whose commission is 0.00m)
+                LockedSaleIds = allPeriodSales.Select(s => s.Id).ToList()
             };
 
             // Transition open items permanently into locked history logs
             foreach (var sale in pendingSales)
             {
                 sale.Status = PayoutStatus.Paid;
+                sale.AssociatedReportId = report.Id;
+                _dbService.Sales.Update(sale);
+                
+                // Sync changes to DuckDB
+                _syncPipeline.QueueUpsert(sale);
+            }
+
+            foreach (var sale in returnedBeforePayoutSales)
+            {
                 sale.AssociatedReportId = report.Id;
                 _dbService.Sales.Update(sale);
                 

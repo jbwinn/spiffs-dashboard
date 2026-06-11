@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using Xunit;
 using SalesLedger.Core.Models;
 using SalesLedger.Core.Services;
 
@@ -9,12 +5,7 @@ namespace SalesLedger.Tests
 {
     public class ReportGeneratorTests : IDisposable
     {
-        private readonly string _outputPath;
-
-        public ReportGeneratorTests()
-        {
-            _outputPath = Path.Combine(Path.GetTempPath(), $"test_report_{Guid.NewGuid():N}.pdf");
-        }
+        private readonly string _outputPath = Path.Combine(Path.GetTempPath(), $"test_report_{Guid.NewGuid():N}.pdf");
 
         [Fact]
         public void GeneratePdfReport_CreatesFileOnDisk()
@@ -56,7 +47,8 @@ namespace SalesLedger.Tests
                     Category = "Cameras",
                     SalePrice = -1000m,
                     CalculatedCommission = -50.00m,
-                    TransactionDate = DateTime.UtcNow
+                    TransactionDate = DateTime.UtcNow,
+                    IsReturn = true
                 }
             };
 

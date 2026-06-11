@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Globalization;
 using DuckDB.NET.Data;
 
@@ -8,17 +7,20 @@ namespace SalesLedger.Core.Services
 {
     public class DashboardSummary
     {
-        public decimal TotalSales { get; set; }
-        public int TotalUnitsSold { get; set; }
-        public decimal TotalCommission { get; set; }
-        public decimal AverageSalePrice { get; set; }
+        public decimal TotalSales { get; init; }
+        public int TotalUnitsSold { get; init; }
+        public decimal TotalCommission { get; init; }
+        public decimal AverageSalePrice { get; init; }
     }
 
     public class CategoryMetric
     {
-        public double Revenue { get; set; }
-        public double Quantity { get; set; }
-        public double Commission { get; set; }
+        public double Revenue { get; init; }
+        public double Quantity { get; init; }
+        public double Commission { get; init; }
+        public double PositiveRevenue { get; init; }
+        public double PositiveQuantity { get; init; }
+        public double PositiveCommission { get; init; }
     }
 
     public class TypeMetric
@@ -30,59 +32,38 @@ namespace SalesLedger.Core.Services
 
     public class TrendBucket
     {
-        public DateTime PeriodStart { get; set; }
-        public string Label { get; set; } = string.Empty;
+        public DateTime PeriodStart { get; init; }
+        public string Label { get; init; } = string.Empty;
         public double TotalRevenue { get; set; }
         public double TotalQuantity { get; set; }
         public double TotalCommission { get; set; }
         public double MaxSalePrice { get; set; }
-        public Dictionary<string, CategoryMetric> CategoryBreakdown { get; set; } = new();
-        public TypeMetric StandardMetric { get; set; } = new();
-        public TypeMetric EbayMetric { get; set; } = new();
-        public TypeMetric WarrantyMetric { get; set; } = new();
-        public TypeMetric ReturnOffsetMetric { get; set; } = new();
+        public Dictionary<string, CategoryMetric> CategoryBreakdown { get; } = new();
+        public TypeMetric StandardMetric { get; } = new();
+        public TypeMetric EbayMetric { get; } = new();
+        public TypeMetric WarrantyMetric { get; } = new();
+        public TypeMetric ReturnOffsetMetric { get; } = new();
     }
 
-    public class AnalyticsService
+    public class AnalyticsService(DuckDbService duckDb)
     {
-        private readonly DuckDbService _duckDb;
-
-        public AnalyticsService(DuckDbService duckDb)
-        {
-            _duckDb = duckDb ?? throw new ArgumentNullException(nameof(duckDb));
-        }
+        private readonly DuckDbService _duckDb = duckDb ?? throw new ArgumentNullException(nameof(duckDb));
 
         public (DateTime Start, DateTime End, string Scale) GetDateRangeAndScale(string timeframe)
         {
             var localNow = DateTime.Now;
             var today = localNow.Date;
 
-            switch (timeframe.Replace(" ", "").ToLowerInvariant())
+            return timeframe.Replace(" ", "").ToLowerInvariant() switch
             {
-                case "currentmonth":
-                    return (new DateTime(today.Year, today.Month, 1), localNow, "day");
-
-                case "lastmonth":
-                    var firstOfThisMonth = new DateTime(today.Year, today.Month, 1);
-                    var firstOfLastMonth = firstOfThisMonth.AddMonths(-1);
-                    return (firstOfLastMonth, firstOfThisMonth.AddMilliseconds(-1), "day");
-
-                case "last30days":
-                    return (today.AddDays(-30), localNow, "day");
-
-                case "last3months":
-                    return (today.AddMonths(-3), localNow, "week");
-
-                case "last6months":
-                    return (today.AddMonths(-6), localNow, "month");
-
-                case "yeartodate":
-                case "ytd":
-                    return (new DateTime(today.Year, 1, 1), localNow, "month");
-
-                default:
-                    return (today.AddDays(-30), localNow, "day");
-            }
+                "currentmonth" => (new DateTime(today.Year, today.Month, 1), localNow, "day"),
+                "lastmonth" => (new DateTime(today.Year, today.Month, 1).AddMonths(-1), new DateTime(today.Year, today.Month, 1).AddMilliseconds(-1), "day"),
+                "last30days" => (today.AddDays(-30), localNow, "day"),
+                "last3months" => (today.AddMonths(-3), localNow, "week"),
+                "last6months" => (today.AddMonths(-6), localNow, "month"),
+                "yeartodate" or "ytd" => (new DateTime(today.Year, 1, 1), localNow, "month"),
+                _ => (today.AddDays(-30), localNow, "day")
+            };
         }
 
         public DashboardSummary GetSummary(string timeframe)
@@ -94,9 +75,9 @@ namespace SalesLedger.Core.Services
             cmd.CommandText = @"
                 SELECT 
                     COALESCE(SUM(SalePrice), 0.0) AS TotalSales,
-                    COALESCE(SUM(CASE WHEN RecordType = 'Standard' OR RecordType = 'Ebay' THEN 1 WHEN RecordType = 'ReturnOffset' THEN -1 ELSE 0 END), 0) AS TotalUnits,
+                    COALESCE(SUM(CASE WHEN RecordType != 'ReturnOffset' AND IsReturn = false THEN 1 ELSE 0 END), 0) AS TotalUnits,
                     COALESCE(SUM(CalculatedCommission), 0.0) AS TotalCommission,
-                    COALESCE(AVG(CASE WHEN (RecordType = 'Standard' OR RecordType = 'Ebay') AND SalePrice > 0 THEN SalePrice ELSE NULL END), 0.0) AS ASP
+                    COALESCE(AVG(CASE WHEN (RecordType = 'Standard' OR RecordType = 'Ebay') AND IsReturn = false AND SalePrice > 0 THEN SalePrice ELSE NULL END), 0.0) AS ASP
                 FROM sales
                 WHERE TransactionDate >= $start AND TransactionDate <= $end AND Status != 'ReturnedBeforePayout';";
 
@@ -128,29 +109,32 @@ namespace SalesLedger.Core.Services
             cmd.CommandText = $@"
                 SELECT 
                     date_trunc('{scale}', TransactionDate) AS BucketDate,
-                    COALESCE(SUM(CASE WHEN RecordType = 'Standard' THEN SalePrice ELSE 0.0 END), 0.0) AS StandardRevenue,
-                    COALESCE(SUM(CASE WHEN RecordType = 'Standard' THEN 1 ELSE 0 END), 0) AS StandardQuantity,
-                    COALESCE(SUM(CASE WHEN RecordType = 'Standard' THEN CalculatedCommission ELSE 0.0 END), 0.0) AS StandardCommission,
+                    COALESCE(SUM(CASE WHEN RecordType = 'Standard' AND IsReturn = false AND Status != 'ReturnedBeforePayout' THEN SalePrice ELSE 0.0 END), 0.0) AS StandardRevenue,
+                    COALESCE(SUM(CASE WHEN RecordType = 'Standard' AND IsReturn = false AND Status != 'ReturnedBeforePayout' THEN 1 ELSE 0 END), 0) AS StandardQuantity,
+                    COALESCE(SUM(CASE WHEN RecordType = 'Standard' AND IsReturn = false AND Status != 'ReturnedBeforePayout' THEN CalculatedCommission ELSE 0.0 END), 0.0) AS StandardCommission,
 
-                    COALESCE(SUM(CASE WHEN RecordType = 'Ebay' THEN SalePrice ELSE 0.0 END), 0.0) AS EbayRevenue,
-                    COALESCE(SUM(CASE WHEN RecordType = 'Ebay' THEN 1 ELSE 0 END), 0) AS EbayQuantity,
-                    COALESCE(SUM(CASE WHEN RecordType = 'Ebay' THEN CalculatedCommission ELSE 0.0 END), 0.0) AS EbayCommission,
+                    COALESCE(SUM(CASE WHEN RecordType = 'Ebay' AND IsReturn = false AND Status != 'ReturnedBeforePayout' THEN SalePrice ELSE 0.0 END), 0.0) AS EbayRevenue,
+                    COALESCE(SUM(CASE WHEN RecordType = 'Ebay' AND IsReturn = false AND Status != 'ReturnedBeforePayout' THEN 1 ELSE 0 END), 0) AS EbayQuantity,
+                    COALESCE(SUM(CASE WHEN RecordType = 'Ebay' AND IsReturn = false AND Status != 'ReturnedBeforePayout' THEN CalculatedCommission ELSE 0.0 END), 0.0) AS EbayCommission,
 
-                    COALESCE(SUM(CASE WHEN RecordType = 'Warranty' THEN SalePrice ELSE 0.0 END), 0.0) AS WarrantyRevenue,
-                    COALESCE(SUM(CASE WHEN RecordType = 'Warranty' THEN 1 ELSE 0 END), 0) AS WarrantyQuantity,
-                    COALESCE(SUM(CASE WHEN RecordType = 'Warranty' THEN CalculatedCommission ELSE 0.0 END), 0.0) AS WarrantyCommission,
+                    COALESCE(SUM(CASE WHEN RecordType = 'Warranty' AND IsReturn = false AND Status != 'ReturnedBeforePayout' THEN SalePrice ELSE 0.0 END), 0.0) AS WarrantyRevenue,
+                    COALESCE(SUM(CASE WHEN RecordType = 'Warranty' AND IsReturn = false AND Status != 'ReturnedBeforePayout' THEN 1 ELSE 0 END), 0) AS WarrantyQuantity,
+                    COALESCE(SUM(CASE WHEN RecordType = 'Warranty' AND IsReturn = false AND Status != 'ReturnedBeforePayout' THEN CalculatedCommission ELSE 0.0 END), 0.0) AS WarrantyCommission,
 
-                    COALESCE(SUM(CASE WHEN RecordType = 'ReturnOffset' THEN SalePrice ELSE 0.0 END), 0.0) AS ReturnRevenue,
-                    COALESCE(SUM(CASE WHEN RecordType = 'ReturnOffset' THEN 1 ELSE 0 END), 0) AS ReturnQuantity,
-                    COALESCE(SUM(CASE WHEN RecordType = 'ReturnOffset' THEN CalculatedCommission ELSE 0.0 END), 0.0) AS ReturnCommission,
+                    COALESCE(SUM(CASE WHEN IsReturn = true THEN SalePrice WHEN Status = 'ReturnedBeforePayout' THEN -SalePrice ELSE 0.0 END), 0.0) AS ReturnRevenue,
+                    COALESCE(SUM(CASE WHEN IsReturn = true THEN 1 WHEN Status = 'ReturnedBeforePayout' THEN 1 ELSE 0 END), 0) AS ReturnQuantity,
+                    COALESCE(SUM(CASE WHEN IsReturn = true THEN CalculatedCommission WHEN Status = 'ReturnedBeforePayout' THEN 0.0 ELSE 0.0 END), 0.0) AS ReturnCommission,
 
                     COALESCE(Category, 'Uncategorized') AS CategoryName,
-                    COALESCE(SUM(SalePrice), 0.0) AS Revenue,
-                    COALESCE(SUM(CASE WHEN RecordType = 'Standard' OR RecordType = 'Ebay' THEN 1 WHEN RecordType = 'ReturnOffset' THEN -1 ELSE 0 END), 0) AS Quantity,
-                    COALESCE(SUM(CalculatedCommission), 0.0) AS Commission,
-                    COALESCE(MAX(SalePrice), 0.0) AS MaxSalePrice
+                    COALESCE(SUM(CASE WHEN Status = 'ReturnedBeforePayout' THEN -SalePrice ELSE SalePrice END), 0.0) AS Revenue,
+                    COALESCE(SUM(CASE WHEN RecordType = 'ReturnOffset' OR IsReturn = true OR Status = 'ReturnedBeforePayout' THEN -1 ELSE 1 END), 0) AS Quantity,
+                    COALESCE(SUM(CASE WHEN Status = 'ReturnedBeforePayout' THEN -CalculatedCommission ELSE CalculatedCommission END), 0.0) AS Commission,
+                    COALESCE(MAX(CASE WHEN IsReturn = false AND Status != 'ReturnedBeforePayout' THEN SalePrice ELSE 0.0 END), 0.0) AS MaxSalePrice,
+                    COALESCE(SUM(CASE WHEN RecordType != 'ReturnOffset' AND IsReturn = false AND Status != 'ReturnedBeforePayout' THEN SalePrice ELSE 0.0 END), 0.0) AS PositiveRevenue,
+                    COALESCE(SUM(CASE WHEN RecordType != 'ReturnOffset' AND IsReturn = false AND Status != 'ReturnedBeforePayout' THEN 1 ELSE 0 END), 0) AS PositiveQuantity,
+                    COALESCE(SUM(CASE WHEN RecordType != 'ReturnOffset' AND IsReturn = false AND Status != 'ReturnedBeforePayout' THEN CalculatedCommission ELSE 0.0 END), 0.0) AS PositiveCommission
                 FROM sales
-                WHERE TransactionDate >= $start AND TransactionDate <= $end AND Status != 'ReturnedBeforePayout'
+                WHERE TransactionDate >= $start AND TransactionDate <= $end
                 GROUP BY BucketDate, CategoryName
                 ORDER BY BucketDate ASC, CategoryName ASC;";
 
@@ -185,6 +169,9 @@ namespace SalesLedger.Core.Services
                     var quantity = ConvertToDouble(reader.GetValue(15));
                     var commission = ConvertToDouble(reader.GetValue(16));
                     var maxSale = ConvertToDouble(reader.GetValue(17));
+                    var posRev = ConvertToDouble(reader.GetValue(18));
+                    var posQty = ConvertToDouble(reader.GetValue(19));
+                    var posComm = ConvertToDouble(reader.GetValue(20));
 
                     if (!bucketsDict.TryGetValue(bucketDate, out var bucket))
                     {
@@ -196,9 +183,9 @@ namespace SalesLedger.Core.Services
                         bucketsDict[bucketDate] = bucket;
                     }
 
-                    bucket.TotalRevenue += revenue;
-                    bucket.TotalQuantity += quantity;
-                    bucket.TotalCommission += commission;
+                    bucket.TotalRevenue += (stdRev + ebayRev + warRev);
+                    bucket.TotalQuantity += (stdQty + ebayQty + warQty);
+                    bucket.TotalCommission += (stdComm + ebayComm + warComm);
                     bucket.MaxSalePrice = Math.Max(bucket.MaxSalePrice, maxSale);
 
                     bucket.StandardMetric.Revenue += stdRev;
@@ -221,7 +208,10 @@ namespace SalesLedger.Core.Services
                     {
                         Revenue = revenue,
                         Quantity = quantity,
-                        Commission = commission
+                        Commission = commission,
+                        PositiveRevenue = posRev,
+                        PositiveQuantity = posQty,
+                        PositiveCommission = posComm
                     };
                 }
             }

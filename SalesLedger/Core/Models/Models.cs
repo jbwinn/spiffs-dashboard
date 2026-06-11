@@ -11,7 +11,7 @@ namespace SalesLedger.Core.Models
     public abstract class SaleRecord 
     {
         public Guid Id { get; set; } = Guid.NewGuid();
-        public SaleType RecordType { get; set; }
+        public SaleType RecordType { get; init; }
         public PayoutStatus Status { get; set; } = PayoutStatus.Pending;
         public Guid? AssociatedReportId { get; set; } // Identifies the report that locked this record
         public DateTime TransactionDate { get; set; } = DateTime.UtcNow;
@@ -21,6 +21,16 @@ namespace SalesLedger.Core.Models
         public string Category { get; set; } = string.Empty; // Matches AppCategory constraints
         public decimal SalePrice { get; set; }
         public decimal CalculatedCommission { get; set; }
+
+        // Return tracking properties
+        public bool IsReturn { get; set; }
+        public Guid? OriginalSaleId { get; set; }
+
+        // UI state helper properties
+        public bool IsPending => Status == PayoutStatus.Pending;
+        public bool IsReturnedBeforePayout => Status == PayoutStatus.ReturnedBeforePayout;
+        public bool IsPaid => Status == PayoutStatus.Paid;
+        public bool CanProcessReturn => !IsReturn && Status != PayoutStatus.ReturnedBeforePayout;
     }
 
     public class StandardSale : SaleRecord 
@@ -39,7 +49,6 @@ namespace SalesLedger.Core.Models
 
     public class ReturnOffsetSale : SaleRecord
     {
-        public Guid OriginalSaleId { get; set; }
         public ReturnOffsetSale() => RecordType = SaleType.ReturnOffset;
     }
 
@@ -51,20 +60,20 @@ namespace SalesLedger.Core.Models
 
     public class PayoutReport
     {
-        public Guid Id { get; set; } = Guid.NewGuid();
-        public DateTime ReportGeneratedTimestamp { get; set; } = DateTime.UtcNow;
-        public string ReportName { get; set; } = string.Empty; // e.g., "June 2026 Submission"
-        public decimal TotalCommissionCalculated { get; set; }
-        public List<Guid> LockedSaleIds { get; set; } = new();
+        public Guid Id { get; init; } = Guid.NewGuid();
+        public DateTime ReportGeneratedTimestamp { get; init; } = DateTime.UtcNow;
+        public string ReportName { get; init; } = string.Empty; // e.g., "June 2026 Submission"
+        public decimal TotalCommissionCalculated { get; init; }
+        public List<Guid> LockedSaleIds { get; init; } = [];
     }
 
     public class UserSettings 
     {
         public Guid Id { get; set; } = Guid.NewGuid();
         public string UserDisplayName { get; set; } = string.Empty;
-        public List<AppCategory> ProductCategories { get; set; } = new();
-        public List<AppWarrantyType> WarrantyTypes { get; set; } = new();
-        public List<CommissionRule> ActiveRules { get; set; } = new();
+        public List<AppCategory>? ProductCategories { get; set; } = [];
+        public List<AppWarrantyType>? WarrantyTypes { get; set; } = [];
+        public List<CommissionRule>? ActiveRules { get; set; } = [];
         public bool AutoUpdateEnabled { get; set; } = true;
     }
 

@@ -1,7 +1,3 @@
-using System;
-using System.IO;
-using System.Linq;
-using Xunit;
 using SalesLedger.Core.Models;
 using SalesLedger.Core.Services;
 
@@ -79,9 +75,56 @@ namespace SalesLedger.Tests
             var summary = _analyticsService.GetSummary("Last 30 Days");
 
             Assert.Equal(1200.00m, summary.TotalSales);
-            Assert.Equal(1, summary.TotalUnitsSold); // Only standardSale counts as 1. warrantySale = 0, returned = 0
+            Assert.Equal(2, summary.TotalUnitsSold); // Both standardSale and warrantySale count as units sold, returned = 0
             Assert.Equal(75.00m, summary.TotalCommission);
             Assert.Equal(1000.00m, summary.AverageSalePrice); // Average of standardSale only
+        }
+
+        [Fact]
+        public void GetSummary_PostPayoutReturn_SubtractsFromRevenueAndCommission_ButAddsZeroToUnitsSold()
+        {
+            var now = DateTime.Now;
+
+            var sale = new StandardSale
+            {
+                InvoiceNumber = "INV-T100",
+                ProductName = "Original Camera",
+                Category = "Cameras",
+                SalePrice = 1000m,
+                CalculatedCommission = 50.00m,
+                TransactionDate = now.AddDays(-10),
+                Status = PayoutStatus.Paid
+            };
+
+            var returnOffset = new StandardSale
+            {
+                InvoiceNumber = "INV-T100",
+                ProductName = "[RETURN] - Original Camera",
+                Category = "Cameras",
+                SalePrice = -1000m,
+                CalculatedCommission = -50.00m,
+                TransactionDate = now.AddDays(-2),
+                Status = PayoutStatus.Pending,
+                IsReturn = true,
+                OriginalSaleId = sale.Id
+            };
+
+            _liteDb.Sales.Insert(sale);
+            _liteDb.Sales.Insert(returnOffset);
+
+            _duckDb.UpsertSale(sale);
+            _duckDb.UpsertSale(returnOffset);
+
+            var summary = _analyticsService.GetSummary("Last 30 Days");
+
+            // Total sales = 1000 + (-1000) = 0
+            Assert.Equal(0.00m, summary.TotalSales);
+            // Units sold = 1 (original) + 0 (return) = 1
+            Assert.Equal(1, summary.TotalUnitsSold);
+            // Total commission = 50 + (-50) = 0
+            Assert.Equal(0.00m, summary.TotalCommission);
+            // ASP should only be of original sale = 1000
+            Assert.Equal(1000.00m, summary.AverageSalePrice);
         }
 
         [Fact]
@@ -134,9 +177,9 @@ namespace SalesLedger.Tests
             _liteDb.Dispose();
             _duckDb.Dispose();
 
-            try { File.Delete(_liteDbPath); } catch {}
-            try { File.Delete(_duckDbPath); } catch {}
-            try { File.Delete(_duckDbPath + ".tmp"); } catch {}
+            try { File.Delete(_liteDbPath); } catch (Exception) { /* ignore */ }
+            try { File.Delete(_duckDbPath); } catch (Exception) { /* ignore */ }
+            try { File.Delete(_duckDbPath + ".tmp"); } catch (Exception) { /* ignore */ }
         }
     }
 }

@@ -6,7 +6,7 @@ using SalesLedger.Core.Theme;
 
 namespace SalesLedger;
 
-public partial class App : Application
+public class App : Application
 {
     public override void Initialize()
     {
@@ -50,7 +50,7 @@ public partial class App : Application
                 DataContext = mainVm
             };
 
-            desktop.Exit += (sender, args) =>
+            desktop.Exit += (_, _) =>
             {
                 mainVm.Dispose();
             };

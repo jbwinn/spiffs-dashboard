@@ -1,6 +1,3 @@
-using System;
-using System.IO;
-using Xunit;
 using SalesLedger.Core.Services;
 
 namespace SalesLedger.Tests

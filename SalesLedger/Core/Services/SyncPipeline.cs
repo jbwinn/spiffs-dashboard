@@ -21,32 +21,22 @@ namespace SalesLedger.Core.Services
             RecordId = id;
         }
 
-        public static SyncAction CreateUpsert(SaleRecord record) => new SyncAction(SyncActionType.Upsert, record, record.Id);
-        public static SyncAction CreateDelete(Guid id) => new SyncAction(SyncActionType.Delete, null, id);
-        public static SyncAction CreateRebuild() => new SyncAction(SyncActionType.Rebuild, null, Guid.Empty);
+        public static SyncAction CreateUpsert(SaleRecord record) => new(SyncActionType.Upsert, record, record.Id);
+        public static SyncAction CreateDelete(Guid id) => new(SyncActionType.Delete, null, id);
+        public static SyncAction CreateRebuild() => new(SyncActionType.Rebuild, null, Guid.Empty);
     }
 
-    public class SyncPipeline
+    public class SyncPipeline(LiteDbService liteDb, DuckDbService duckDb)
     {
-        private readonly Channel<SyncAction> _channel;
-        private readonly LiteDbService _liteDb;
-        private readonly DuckDbService _duckDb;
-        private readonly CancellationTokenSource _cts;
+        private readonly Channel<SyncAction> _channel = Channel.CreateUnbounded<SyncAction>(new UnboundedChannelOptions
+        {
+            SingleReader = true,
+            SingleWriter = false
+        });
+        private readonly CancellationTokenSource _cts = new();
         private Task? _processingTask;
 
         public event Action? SyncCompleted;
-
-        public SyncPipeline(LiteDbService liteDb, DuckDbService duckDb)
-        {
-            _liteDb = liteDb;
-            _duckDb = duckDb;
-            _channel = Channel.CreateUnbounded<SyncAction>(new UnboundedChannelOptions
-            {
-                SingleReader = true,
-                SingleWriter = false
-            });
-            _cts = new CancellationTokenSource();
-        }
 
         public void Start()
         {
@@ -87,11 +77,11 @@ namespace SalesLedger.Core.Services
                                 case SyncActionType.Upsert:
                                     if (action.Record != null)
                                     {
-                                        _duckDb.UpsertSale(action.Record);
+                                        duckDb.UpsertSale(action.Record);
                                     }
                                     break;
                                 case SyncActionType.Delete:
-                                    _duckDb.DeleteSale(action.RecordId);
+                                    duckDb.DeleteSale(action.RecordId);
                                     break;
                                 case SyncActionType.Rebuild:
                                     RebuildDuckDb();
@@ -121,11 +111,11 @@ namespace SalesLedger.Core.Services
         {
             try
             {
-                _duckDb.ClearAll();
-                var allSales = _liteDb.Sales.FindAll();
+                duckDb.ClearAll();
+                var allSales = liteDb.Sales.FindAll();
                 foreach (var sale in allSales)
                 {
-                    _duckDb.UpsertSale(sale);
+                    duckDb.UpsertSale(sale);
                 }
             }
             catch (Exception ex)

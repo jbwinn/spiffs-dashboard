@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -68,10 +67,10 @@ namespace SalesLedger.Core.Services
                         // Summary Stats Grid
                         column.Item().PaddingBottom(20).Row(row =>
                         {
-                            var totalSales = sales.Sum(s => s.SalePrice);
+                            var totalSales = sales.Where(s => s.Status != PayoutStatus.ReturnedBeforePayout).Sum(s => s.SalePrice);
                             var totalCommission = sales.Sum(s => s.CalculatedCommission);
-                            var unitsSold = sales.Count(s => s.RecordType == SaleType.Standard || s.RecordType == SaleType.Ebay) - sales.Count(s => s.RecordType == SaleType.ReturnOffset);
-                            var standardSales = sales.Where(s => (s.RecordType == SaleType.Standard || s.RecordType == SaleType.Ebay) && s.SalePrice > 0).ToList();
+                            var unitsSold = sales.Count(s => s.RecordType != SaleType.ReturnOffset && s.Status != PayoutStatus.ReturnedBeforePayout && !s.IsReturn);
+                            var standardSales = sales.Where(s => (s.RecordType == SaleType.Standard || s.RecordType == SaleType.Ebay) && s.SalePrice > 0 && s.Status != PayoutStatus.ReturnedBeforePayout && !s.IsReturn).ToList();
                             var asp = standardSales.Any() ? standardSales.Average(s => s.SalePrice) : 0m;
 
                             row.RelativeItem().Element(c => ConfigureStatCard(c, "Total Sales", totalSales.ToString("C")));
@@ -120,18 +119,25 @@ namespace SalesLedger.Core.Services
                                 bool isAlternate = false;
                                 foreach (var sale in sectionSales.OrderBy(s => s.TransactionDate))
                                 {
-                                    table.Cell().Element(c => ConfigureCell(c, isAlternate)).Text(sale.TransactionDate.ToString("yyyy-MM-dd"));
-                                    table.Cell().Element(c => ConfigureCell(c, isAlternate)).Text(sale.InvoiceNumber);
-                                    table.Cell().Element(c => ConfigureCell(c, isAlternate)).Text(sale.ProductName);
-                                    table.Cell().Element(c => ConfigureCell(c, isAlternate)).Text(sale.Category);
-                                    table.Cell().Element(c => ConfigureCell(c, isAlternate)).AlignRight().Text(sale.SalePrice.ToString("C"));
-                                    table.Cell().Element(c => ConfigureCell(c, isAlternate)).AlignRight().Text(sale.CalculatedCommission.ToString("C"));
+                                    bool currentAlternate = isAlternate;
+                                    table.Cell().Element(c => ConfigureCell(c, currentAlternate)).Text(sale.TransactionDate.ToString("yyyy-MM-dd"));
+                                    table.Cell().Element(c => ConfigureCell(c, currentAlternate)).Text(sale.InvoiceNumber);
+                                    
+                                    var dispName = sale.ProductName;
+                                    if (sale.Status == PayoutStatus.ReturnedBeforePayout)
+                                    {
+                                        dispName += " (Returned before payout)";
+                                    }
+                                    table.Cell().Element(c => ConfigureCell(c, currentAlternate)).Text(dispName);
+                                    table.Cell().Element(c => ConfigureCell(c, currentAlternate)).Text(sale.Category);
+                                    table.Cell().Element(c => ConfigureCell(c, currentAlternate)).AlignRight().Text(sale.SalePrice.ToString("C"));
+                                    table.Cell().Element(c => ConfigureCell(c, currentAlternate)).AlignRight().Text(sale.CalculatedCommission.ToString("C"));
 
                                     isAlternate = !isAlternate;
                                 }
 
                                 // Subtotals
-                                var subTotalSales = sectionSales.Sum(s => s.SalePrice);
+                                var subTotalSales = sectionSales.Where(s => s.Status != PayoutStatus.ReturnedBeforePayout).Sum(s => s.SalePrice);
                                 var subTotalComm = sectionSales.Sum(s => s.CalculatedCommission);
 
                                 table.Cell().Element(ConfigureSubtotalCell).Text(string.Empty);
@@ -143,11 +149,11 @@ namespace SalesLedger.Core.Services
                             });
                         }
 
-                        RenderSection("Standard Sales (New Gear)", sales.Where(s => s is StandardSale std && !std.IsUsedGear).Cast<SaleRecord>().ToList());
-                        RenderSection("Standard Sales (Used Gear)", sales.Where(s => s is StandardSale std && std.IsUsedGear).Cast<SaleRecord>().ToList());
-                        RenderSection("eBay Sales", sales.Where(s => s is EbaySale).ToList());
-                        RenderSection("Warranty Sales", sales.Where(s => s is WarrantySale).ToList());
-                        RenderSection("Return Offsets", sales.Where(s => s is ReturnOffsetSale).ToList());
+                        RenderSection("Standard Sales (New Gear)", sales.Where(s => s is StandardSale { IsUsedGear: false } && !s.IsReturn).ToList());
+                        RenderSection("Standard Sales (Used Gear)", sales.Where(s => s is StandardSale { IsUsedGear: true } && !s.IsReturn).ToList());
+                        RenderSection("eBay Sales", sales.Where(s => s is EbaySale && !s.IsReturn).ToList());
+                        RenderSection("Warranty Sales", sales.Where(s => s is WarrantySale && !s.IsReturn).ToList());
+                        RenderSection("Return Offsets", sales.Where(s => s.IsReturn).ToList());
                     });
 
                     // Footer

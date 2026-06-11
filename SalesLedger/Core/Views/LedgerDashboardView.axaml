@@ -52,6 +52,17 @@
                             </Button.Styles>
                         </Button>
                         
+                        <Button Content="Preview Report" 
+                                Command="{Binding PreviewPeriodReportCommand}" 
+                                Background="{DynamicResource BorderSlate}" Foreground="White" 
+                                FontWeight="Bold" Padding="16,8" CornerRadius="6" Height="36" VerticalContentAlignment="Center">
+                            <Button.Styles>
+                                <Style Selector="Button:pointerover">
+                                    <Setter Property="Background" Value="{DynamicResource TextMuted}"/>
+                                </Style>
+                            </Button.Styles>
+                        </Button>
+
                         <Button Content="Finalize Pay Period" 
                                 Command="{Binding ShowPeriodCloseDialogCommand}" 
                                 Background="{DynamicResource AccentGreen}" Foreground="White" 
@@ -101,7 +112,7 @@
                 </Grid>
 
                 <!-- MIDDLE SECTION: Trends Chart (Full Width) -->
-                <Grid ColumnDefinitions="*" Height="300">
+                <Grid ColumnDefinitions="*" Height="400">
                     <Border Background="{DynamicResource BgCardDark}" BorderBrush="{DynamicResource BorderSlate}" BorderThickness="1" CornerRadius="10" Padding="20">
                         <Grid RowDefinitions="Auto, *">
                             <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="0,0,0,12">
@@ -113,7 +124,7 @@
                             </Grid>
                             
                             <!-- Graph Bars Layout Container -->
-                            <ItemsControl Grid.Row="1" ItemsSource="{Binding ChartItems}" VerticalAlignment="Bottom" Height="210">
+                            <ItemsControl Grid.Row="1" ItemsSource="{Binding ChartItems}" VerticalAlignment="Bottom" Height="310">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
                                         <UniformGrid Rows="1" VerticalAlignment="Bottom"/>
@@ -122,7 +133,7 @@
                                 
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:ChartItem">
-                                        <StackPanel Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Bottom" Background="Transparent">
+                                        <Grid RowDefinitions="130, 1, 130, Auto" HorizontalAlignment="Center" Background="Transparent">
                                             <ToolTip.Tip>
                                                 <Border Background="{DynamicResource BgAppDark}" BorderBrush="{DynamicResource TextMuted}" BorderThickness="1" CornerRadius="8" Padding="14">
                                                     <StackPanel Spacing="8" MinWidth="200">
@@ -160,7 +171,7 @@
                                                             <TextBlock Grid.Column="1" Text="{Binding WarrantyBreakdownText}" Foreground="{DynamicResource TextPrimary}" FontSize="10" FontWeight="SemiBold"/>
                                                         </Grid>
                                                         <Grid ColumnDefinitions="*, Auto" Margin="0,1" IsVisible="{Binding HasReturnOffsets}">
-                                                            <TextBlock Text="Return Offsets:" Foreground="{DynamicResource AccentRed}" FontSize="10"/>
+                                                            <TextBlock Text="Returns:" Foreground="{DynamicResource AccentRed}" FontSize="10"/>
                                                             <TextBlock Grid.Column="1" Text="{Binding ReturnOffsetBreakdownText}" Foreground="{DynamicResource AccentRed}" FontSize="10" FontWeight="SemiBold"/>
                                                         </Grid>
 
@@ -180,9 +191,9 @@
                                                 </Border>
                                             </ToolTip.Tip>
                                             
-                                            <!-- Vertical Bar border -->
-                                            <Border Width="18" 
-                                                    Height="{Binding Height}" 
+                                            <!-- Vertical Bar border (Positive) -->
+                                            <Border Grid.Row="0" Width="18" 
+                                                    Height="{Binding PositiveHeight}" 
                                                     Background="{DynamicResource AccentBlue}" 
                                                     CornerRadius="4,4,0,0" 
                                                     HorizontalAlignment="Center"
@@ -193,9 +204,31 @@
                                                     </Style>
                                                 </Border.Styles>
                                             </Border>
+
+                                            <!-- Horizontal baseline separator (1px) -->
+                                            <Border Grid.Row="1"
+                                                    Height="1"
+                                                    Background="{DynamicResource BorderSlate}"
+                                                    HorizontalAlignment="Stretch"/>
+
+                                            <!-- Vertical Bar border (Negative) -->
+                                            <Border Grid.Row="2" Width="18" 
+                                                    Height="{Binding NegativeHeight}" 
+                                                    Background="{DynamicResource AccentRed}" 
+                                                    CornerRadius="0,0,4,4" 
+                                                    HorizontalAlignment="Center"
+                                                    VerticalAlignment="Top"
+                                                    IsVisible="{Binding HasNegativeValue}">
+                                                <Border.Styles>
+                                                    <Style Selector="Border:pointerover">
+                                                        <Setter Property="Background" Value="{DynamicResource AccentRedHover}"/>
+                                                    </Style>
+                                                </Border.Styles>
+                                            </Border>
+
                                             <!-- Label below bar -->
-                                            <TextBlock Text="{Binding Label}" Foreground="{DynamicResource TextSecondary}" FontSize="10" HorizontalAlignment="Center"/>
-                                        </StackPanel>
+                                            <TextBlock Grid.Row="3" Text="{Binding Label}" Foreground="{DynamicResource TextSecondary}" FontSize="10" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                                        </Grid>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
@@ -344,20 +377,33 @@
                                                 <Button Command="{Binding $parent[DataGrid].((vm:LedgerDashboardViewModel)DataContext).EditSaleCommand}"
                                                         CommandParameter="{Binding}"
                                                         ToolTip.Tip="Edit Transaction"
+                                                        IsVisible="{Binding IsPending}"
                                                         Background="{DynamicResource BorderSlate}" Padding="6,2" CornerRadius="4" BorderThickness="0" Height="26" Width="26" VerticalContentAlignment="Center" HorizontalContentAlignment="Center">
                                                     <TextBlock Text="✎" Foreground="White" FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                                                 </Button>
+                                                <!-- Restore Return Button -->
+                                                <Button Command="{Binding $parent[DataGrid].((vm:LedgerDashboardViewModel)DataContext).ShowRestoreReturnDialogCommand}"
+                                                        CommandParameter="{Binding}"
+                                                        ToolTip.Tip="Restore Return"
+                                                        IsVisible="{Binding IsReturnedBeforePayout}"
+                                                        Background="{DynamicResource BorderSlate}" Padding="6,2" CornerRadius="4" BorderThickness="0" Height="26" Width="26" VerticalContentAlignment="Center" HorizontalContentAlignment="Center">
+                                                    <TextBlock Text="↺" Foreground="White" FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                                </Button>
+
                                                 <!-- Process Return Button -->
                                                 <Button Command="{Binding $parent[DataGrid].((vm:LedgerDashboardViewModel)DataContext).ProcessReturnCommand}"
                                                         CommandParameter="{Binding}"
                                                         ToolTip.Tip="Process Return"
+                                                        IsVisible="{Binding CanProcessReturn}"
                                                         Background="{DynamicResource AccentRedHover}" Padding="6,2" CornerRadius="4" BorderThickness="0" Height="26" Width="26" VerticalContentAlignment="Center" HorizontalContentAlignment="Center">
                                                     <TextBlock Text="↶" Foreground="White" FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                                                 </Button>
+
                                                 <!-- Delete Button -->
                                                 <Button Command="{Binding $parent[DataGrid].((vm:LedgerDashboardViewModel)DataContext).DeleteSaleCommand}"
                                                         CommandParameter="{Binding}"
                                                         ToolTip.Tip="Delete Transaction"
+                                                        IsVisible="{Binding !IsPaid}"
                                                         Background="{DynamicResource AccentRed}" Padding="6,2" CornerRadius="4" BorderThickness="0" Height="26" Width="26" VerticalContentAlignment="Center" HorizontalContentAlignment="Center">
                                                     <TextBlock Text="✕" Foreground="White" FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                                                 </Button>
@@ -618,6 +664,32 @@
                             <Button.Styles>
                                 <Style Selector="Button:pointerover">
                                     <Setter Property="Background" Value="{DynamicResource AccentPurpleHover}"/>
+                                </Style>
+                            </Button.Styles>
+                        </Button>
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </Grid>
+        <!-- DIALOG OVERLAY: Restore Return Confirmation -->
+        <Grid Background="{DynamicResource BgOverlay}" IsVisible="{Binding IsRestoreReturnDialogVisible}">
+            <Border Background="{DynamicResource BgCardDark}" BorderBrush="{DynamicResource BorderSlate}" BorderThickness="1" CornerRadius="12" Padding="24" Width="400" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <StackPanel Spacing="16">
+                    <TextBlock Text="Restore Returned Product" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
+                    <TextBlock Text="Do you want to restore this transaction? This will mark the product as no longer returned, restore its status to Pending, and recalculate its commission." FontSize="12" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"/>
+                    
+                    <Grid ColumnDefinitions="*, 12, *" Margin="0,8,0,0">
+                        <Button Grid.Column="0" Content="Cancel" Command="{Binding CloseRestoreReturnDialogCommand}" Background="{DynamicResource BorderSlate}" Foreground="White" Height="36" VerticalContentAlignment="Center" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" CornerRadius="6">
+                            <Button.Styles>
+                                <Style Selector="Button:pointerover">
+                                    <Setter Property="Background" Value="{DynamicResource TextMuted}"/>
+                                </Style>
+                            </Button.Styles>
+                        </Button>
+                        <Button Grid.Column="2" Content="Restore" Command="{Binding ExecuteRestoreReturnCommand}" Background="{DynamicResource AccentBlue}" Foreground="White" Height="36" VerticalContentAlignment="Center" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" CornerRadius="6" FontWeight="SemiBold">
+                            <Button.Styles>
+                                <Style Selector="Button:pointerover">
+                                    <Setter Property="Background" Value="{DynamicResource AccentBlueHover}"/>
                                 </Style>
                             </Button.Styles>
                         </Button>

@@ -11,13 +11,10 @@ namespace SalesLedger.Core.Theme
         public const string FontPrimaryName = "ITC Avant Garde Gothic Pro, Segoe UI, Roboto, Helvetica Neue, sans-serif";
         public const string FontSecondaryName = "Warbler Deck, Georgia, Times New Roman, serif";
 
-        // Font Family Singles (For PDF report rendering)
-        public const string PrintFontPrimary = "ITC Avant Garde Gothic Pro";
-        public const string PrintFontSecondary = "Warbler Deck";
 
         // Font Families with fallbacks (For PDF report rendering)
-        public static readonly string[] PrintFontPrimaryFamilies = new[] { "ITC Avant Garde Gothic Pro", "Segoe UI", "Arial", "sans-serif" };
-        public static readonly string[] PrintFontSecondaryFamilies = new[] { "Warbler Deck", "Georgia", "Times New Roman", "serif" };
+        public static readonly string[] PrintFontPrimaryFamilies = [ "ITC Avant Garde Gothic Pro", "Segoe UI", "Arial", "sans-serif" ];
+        public static readonly string[] PrintFontSecondaryFamilies = [ "Warbler Deck", "Georgia", "Times New Roman", "serif" ];
 
         // Desktop Dark Theme Colors (Avalonia UI)
         public const string BgApp = "#1A1817";          // Dark warm grey (derived from CS-Grey #332F2E)
@@ -34,7 +31,6 @@ namespace SalesLedger.Core.Theme
         public const string AccentGreen = "#A5CC6B";    // CS-Green
         public const string AccentGreenHover = "#B7D689";// Greens Step 1
         public const string AccentYellow = "#F5C44C";   // CS-Yellow (main warning/commission highlight)
-        public const string AccentYellowHover = "#F7D070";// Yellows Step 1
         public const string AccentBrown = "#5D4532";    // CS-Brown
         public const string AccentBrownHover = "#7D6A5B";// Browns Step 1
         public const string AccentRed = "#E05A5D";      // Warm coral red for errors

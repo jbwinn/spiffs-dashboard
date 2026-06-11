@@ -14,33 +14,33 @@ namespace SalesLedger.Core.ViewModels
         private readonly MainWindowViewModel _mainVm;
 
         [ObservableProperty]
-        private string _userDisplayName = string.Empty;
+        public partial string UserDisplayName { get; set; } = string.Empty;
 
         [ObservableProperty]
-        private string _newCategoryName = string.Empty;
+        public partial string NewCategoryName { get; set; } = string.Empty;
 
         [ObservableProperty]
-        private string _newWarrantyTypeName = string.Empty;
+        public partial string NewWarrantyTypeName { get; set; } = string.Empty;
 
         // Collections bound to UI
-        public ObservableCollection<AppCategory> Categories { get; } = new();
-        public ObservableCollection<AppWarrantyType> WarrantyTypes { get; } = new();
-        public ObservableCollection<CommissionRule> Rules { get; } = new();
+        public ObservableCollection<AppCategory> Categories { get; } = [];
+        public ObservableCollection<AppWarrantyType> WarrantyTypes { get; } = [];
+        public ObservableCollection<CommissionRule> Rules { get; } = [];
 
         // New Rule fields
-        [ObservableProperty] private string _newRuleName = string.Empty;
-        [ObservableProperty] private RuleScope _newRuleScope = RuleScope.CategorySpecific;
-        [ObservableProperty] private string _newRuleTargetCategory = string.Empty;
-        [ObservableProperty] private PayoutType _newRuleCalculationType = PayoutType.PercentageOfPrice;
-        [ObservableProperty] private decimal _newRuleValue;
+        [ObservableProperty] public partial string NewRuleName { get; set; } = string.Empty;
+        [ObservableProperty] public partial RuleScope NewRuleScope { get; set; } = RuleScope.CategorySpecific;
+        [ObservableProperty] public partial string NewRuleTargetCategory { get; set; } = string.Empty;
+        [ObservableProperty] public partial PayoutType NewRuleCalculationType { get; set; } = PayoutType.PercentageOfPrice;
+        [ObservableProperty] public partial decimal NewRuleValue { get; set; }
 
         // Edit Rule fields
-        [ObservableProperty] private bool _isEditRuleDialogVisible;
-        [ObservableProperty] private string _editRuleName = string.Empty;
-        [ObservableProperty] private RuleScope _editRuleScope = RuleScope.CategorySpecific;
-        [ObservableProperty] private string _editRuleTargetCategory = string.Empty;
-        [ObservableProperty] private PayoutType _editRuleCalculationType = PayoutType.PercentageOfPrice;
-        [ObservableProperty] private decimal _editRuleValue;
+        [ObservableProperty] public partial bool IsEditRuleDialogVisible { get; set; }
+        [ObservableProperty] public partial string EditRuleName { get; set; } = string.Empty;
+        [ObservableProperty] public partial RuleScope EditRuleScope { get; set; } = RuleScope.CategorySpecific;
+        [ObservableProperty] public partial string EditRuleTargetCategory { get; set; } = string.Empty;
+        [ObservableProperty] public partial PayoutType EditRuleCalculationType { get; set; } = PayoutType.PercentageOfPrice;
+        [ObservableProperty] public partial decimal EditRuleValue { get; set; }
         private CommissionRule? _editingRuleInstance;
 
         // Binding helper for rule scopes & payout types
@@ -56,45 +56,24 @@ namespace SalesLedger.Core.ViewModels
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(HasStatusMessage))]
-        private string _statusMessage = string.Empty;
+        public partial string StatusMessage { get; set; } = string.Empty;
 
         public bool HasStatusMessage => !string.IsNullOrEmpty(StatusMessage);
 
         [ObservableProperty]
-        private bool _isStatusError;
+        public partial bool IsStatusError { get; set; }
 
-        private bool _autoUpdateEnabled;
-        public bool AutoUpdateEnabled
-        {
-            get => _autoUpdateEnabled;
-            set => SetProperty(ref _autoUpdateEnabled, value);
-        }
+        [ObservableProperty]
+        public partial bool AutoUpdateEnabled { get; set; }
 
-        private string _updateStatusMessage = string.Empty;
-        public string UpdateStatusMessage
-        {
-            get => _updateStatusMessage;
-            set => SetProperty(ref _updateStatusMessage, value);
-        }
+        [ObservableProperty]
+        public partial string UpdateStatusMessage { get; set; } = string.Empty;
 
-        private bool _isCheckingForUpdates;
-        public bool IsCheckingForUpdates
-        {
-            get => _isCheckingForUpdates;
-            set
-            {
-                if (SetProperty(ref _isCheckingForUpdates, value))
-                {
-                    OnPropertyChanged(nameof(IsNotCheckingForUpdates));
-                }
-            }
-        }
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(IsNotCheckingForUpdates))]
+        private partial bool IsCheckingForUpdates { get; set; }
 
-        public bool IsNotCheckingForUpdates => !_isCheckingForUpdates;
-
-        private IAsyncRelayCommand? _checkForUpdatesManualCommand;
-        public IAsyncRelayCommand CheckForUpdatesManualCommand => 
-            _checkForUpdatesManualCommand ??= new AsyncRelayCommand(CheckForUpdatesManualAsync);
+        public bool IsNotCheckingForUpdates => !IsCheckingForUpdates;
 
         public FullScreenSettingsViewModel(MainWindowViewModel mainVm)
         {
@@ -109,18 +88,18 @@ namespace SalesLedger.Core.ViewModels
             AutoUpdateEnabled = settings.AutoUpdateEnabled;
 
             Categories.Clear();
-            foreach (var cat in settings.ProductCategories)
+            foreach (var cat in settings.ProductCategories ?? [])
             {
                 Categories.Add(cat);
             }
 
             WarrantyTypes.Clear();
-            foreach (var wt in settings.WarrantyTypes)
+            foreach (var wt in settings.WarrantyTypes ?? [])
             {
                 WarrantyTypes.Add(wt);
             }
 
-            RefreshRulesList(settings.ActiveRules);
+            RefreshRulesList(settings.ActiveRules ?? []);
         }
 
         private void RefreshRulesList(List<CommissionRule> activeRules)
@@ -135,7 +114,7 @@ namespace SalesLedger.Core.ViewModels
         }
 
         [RelayCommand]
-        public void SaveProfile()
+        private void SaveProfile()
         {
             if (string.IsNullOrWhiteSpace(UserDisplayName))
             {
@@ -150,7 +129,8 @@ namespace SalesLedger.Core.ViewModels
             ShowStatus("Profile saved successfully!", false);
         }
 
-        public async Task CheckForUpdatesManualAsync()
+        [RelayCommand]
+        private async Task CheckForUpdatesManual()
         {
             if (IsCheckingForUpdates) return;
             IsCheckingForUpdates = true;
@@ -186,14 +166,14 @@ namespace SalesLedger.Core.ViewModels
         }
 
         [RelayCommand]
-        public void TestUpdateUi()
+        private void TestUpdateUi()
         {
             _mainVm.UpdateMessageText = "A new version (v2.0.1-mock) is available. Would you like to install it now? The application will restart automatically.";
             _mainVm.IsUpdateDialogVisible = true;
         }
 
         [RelayCommand]
-        public void ResetDatabase()
+        private void ResetDatabase()
         {
             try
             {
@@ -203,8 +183,12 @@ namespace SalesLedger.Core.ViewModels
                 _mainVm.LiteDb.Reports.DeleteAll();
 
                 // Re-initialize default settings
-                var settings = _mainVm.LiteDb.GetUserSettings();
                 LoadSettings();
+
+#if DEBUG
+                // Auto-populate generic products in debug mode
+                _mainVm.LiteDb.SeedDebugData(force: true);
+#endif
 
                 // Trigger a DuckDB sync rebuild
                 _mainVm.Sync.QueueRebuild();
@@ -218,7 +202,7 @@ namespace SalesLedger.Core.ViewModels
         }
 
         [RelayCommand]
-        public void AddCategory()
+        private void AddCategory()
         {
             if (string.IsNullOrWhiteSpace(NewCategoryName)) return;
 
@@ -237,7 +221,7 @@ namespace SalesLedger.Core.ViewModels
         }
 
         [RelayCommand]
-        public void ToggleCategoryActive(AppCategory category)
+        private void ToggleCategoryActive(AppCategory category)
         {
             if (category.IsSystemPreset)
             {
@@ -252,7 +236,7 @@ namespace SalesLedger.Core.ViewModels
         }
 
         [RelayCommand]
-        public void DeleteCategory(AppCategory category)
+        private void DeleteCategory(AppCategory category)
         {
             if (category.IsSystemPreset)
             {
@@ -279,7 +263,7 @@ namespace SalesLedger.Core.ViewModels
         }
 
         [RelayCommand]
-        public void AddWarrantyType()
+        private void AddWarrantyType()
         {
             if (string.IsNullOrWhiteSpace(NewWarrantyTypeName)) return;
 
@@ -298,7 +282,7 @@ namespace SalesLedger.Core.ViewModels
         }
 
         [RelayCommand]
-        public void ToggleWarrantyTypeActive(AppWarrantyType warrantyType)
+        private void ToggleWarrantyTypeActive(AppWarrantyType warrantyType)
         {
             if (warrantyType.IsSystemPreset)
             {
@@ -312,7 +296,7 @@ namespace SalesLedger.Core.ViewModels
         }
 
         [RelayCommand]
-        public void DeleteWarrantyType(AppWarrantyType warrantyType)
+        private void DeleteWarrantyType(AppWarrantyType warrantyType)
         {
             if (warrantyType.IsSystemPreset)
             {
@@ -337,7 +321,7 @@ namespace SalesLedger.Core.ViewModels
         }
 
         [RelayCommand]
-        public void AddCommissionRule()
+        private void AddCommissionRule()
         {
             if (string.IsNullOrWhiteSpace(NewRuleName))
             {
@@ -371,7 +355,7 @@ namespace SalesLedger.Core.ViewModels
         }
 
         [RelayCommand]
-        public void EditCommissionRule(CommissionRule rule)
+        private void EditCommissionRule(CommissionRule? rule)
         {
             if (rule == null) return;
             _editingRuleInstance = rule;
@@ -384,14 +368,14 @@ namespace SalesLedger.Core.ViewModels
         }
 
         [RelayCommand]
-        public void CloseEditRuleDialog()
+        private void CloseEditRuleDialog()
         {
             IsEditRuleDialogVisible = false;
             _editingRuleInstance = null;
         }
 
         [RelayCommand]
-        public void SaveEditedRule()
+        private void SaveEditedRule()
         {
             if (_editingRuleInstance == null) return;
 
@@ -428,7 +412,7 @@ namespace SalesLedger.Core.ViewModels
         }
 
         [RelayCommand]
-        public void DeleteCommissionRule(CommissionRule rule)
+        private void DeleteCommissionRule(CommissionRule rule)
         {
             Rules.Remove(rule);
             
@@ -440,7 +424,7 @@ namespace SalesLedger.Core.ViewModels
         }
 
         [RelayCommand]
-        public void MoveRuleUp(CommissionRule rule)
+        private void MoveRuleUp(CommissionRule rule)
         {
             int index = Rules.IndexOf(rule);
             if (index <= 0) return; // Already at the top
@@ -448,9 +432,7 @@ namespace SalesLedger.Core.ViewModels
             var prev = Rules[index - 1];
             
             // Swap priority orders
-            int temp = rule.PriorityOrder;
-            rule.PriorityOrder = prev.PriorityOrder;
-            prev.PriorityOrder = temp;
+            (rule.PriorityOrder, prev.PriorityOrder) = (prev.PriorityOrder, rule.PriorityOrder);
 
             Rules[index] = prev;
             Rules[index - 1] = rule;
@@ -459,7 +441,7 @@ namespace SalesLedger.Core.ViewModels
         }
 
         [RelayCommand]
-        public void MoveRuleDown(CommissionRule rule)
+        private void MoveRuleDown(CommissionRule rule)
         {
             int index = Rules.IndexOf(rule);
             if (index < 0 || index >= Rules.Count - 1) return; // Already at the bottom
@@ -467,9 +449,7 @@ namespace SalesLedger.Core.ViewModels
             var next = Rules[index + 1];
 
             // Swap priority orders
-            int temp = rule.PriorityOrder;
-            rule.PriorityOrder = next.PriorityOrder;
-            next.PriorityOrder = temp;
+            (rule.PriorityOrder, next.PriorityOrder) = (next.PriorityOrder, rule.PriorityOrder);
 
             Rules[index] = next;
             Rules[index + 1] = rule;

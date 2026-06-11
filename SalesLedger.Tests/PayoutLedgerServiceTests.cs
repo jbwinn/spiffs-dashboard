@@ -1,7 +1,3 @@
-using System;
-using System.IO;
-using System.Linq;
-using Xunit;
 using SalesLedger.Core.Models;
 using SalesLedger.Core.Services;
 
@@ -69,16 +65,17 @@ namespace SalesLedger.Tests
             var fetchedOriginal = _liteDb.Sales.FindById(originalSale.Id);
             Assert.Equal(PayoutStatus.Paid, fetchedOriginal.Status);
 
-            // Verify a ReturnOffsetSale was inserted
-            var offsets = _liteDb.Sales.Find(x => x.RecordType == SaleType.ReturnOffset).ToList();
+            // Verify a StandardSale return offset was inserted
+            var offsets = _liteDb.Sales.Find(x => x.IsReturn).ToList();
             Assert.Single(offsets);
 
-            var offset = (ReturnOffsetSale)offsets[0];
+            var offset = offsets[0];
             Assert.Equal(originalSale.Id, offset.OriginalSaleId);
             Assert.Equal(-1500m, offset.SalePrice);
             Assert.Equal(-75.00m, offset.CalculatedCommission);
             Assert.Equal(PayoutStatus.Pending, offset.Status);
-            Assert.Contains("RETURN OFFSET", offset.ProductName);
+            Assert.Contains("[RETURN]", offset.ProductName);
+            Assert.True(offset is StandardSale);
         }
 
         [Fact]
@@ -117,6 +114,24 @@ namespace SalesLedger.Tests
             Assert.Equal(report.Id, updatedSale2.AssociatedReportId);
         }
 
+#if DEBUG
+        [Fact]
+        public void SeedDebugData_InsertsGenericSales_AndCalculatesCommissions()
+        {
+            _liteDb.SeedDebugData(force: true);
+            var sales = _liteDb.Sales.FindAll().ToList();
+            Assert.Equal(6, sales.Count);
+
+            var stdSale = sales.FirstOrDefault(s => s.Sku == "SONY-A7IV");
+            Assert.NotNull(stdSale);
+            Assert.Equal(125.00m, stdSale.CalculatedCommission);
+
+            var lensSale = sales.FirstOrDefault(s => s.Sku == "CANON-2470U");
+            Assert.NotNull(lensSale);
+            Assert.Equal(38.97m, lensSale.CalculatedCommission);
+        }
+#endif
+
         public void Dispose()
         {
             _syncPipeline.Stop();
@@ -124,9 +139,9 @@ namespace SalesLedger.Tests
             _duckDb.Dispose();
 
             // Try clean files
-            try { File.Delete(_liteDbPath); } catch {}
-            try { File.Delete(_duckDbPath); } catch {}
-            try { File.Delete(_duckDbPath + ".tmp"); } catch {}
+            try { File.Delete(_liteDbPath); } catch (Exception) { /* ignore */ }
+            try { File.Delete(_duckDbPath); } catch (Exception) { /* ignore */ }
+            try { File.Delete(_duckDbPath + ".tmp"); } catch (Exception) { /* ignore */ }
         }
     }
 }

@@ -20,58 +20,58 @@ namespace SalesLedger.Core.ViewModels
         private readonly MainWindowViewModel _mainVm;
 
         // KPI Properties
-        [ObservableProperty] private decimal _totalSales;
-        [ObservableProperty] private int _totalUnitsSold;
-        [ObservableProperty] private decimal _totalCommission;
-        [ObservableProperty] private decimal _averageSalePrice;
+        [ObservableProperty] public partial decimal TotalSales { get; set; }
+        [ObservableProperty] public partial int TotalUnitsSold { get; set; }
+        [ObservableProperty] public partial decimal TotalCommission { get; set; }
+        [ObservableProperty] public partial decimal AverageSalePrice { get; set; }
 
         // Timeframe & Metric selections
-        [ObservableProperty] private string _selectedTimeframe = "Last 30 Days";
-        [ObservableProperty] private string _selectedMetric = "Revenue"; // "Revenue", "Quantity", "Commission"
-        [ObservableProperty] private bool _highValueSalesOnly;
+        [ObservableProperty] public partial string SelectedTimeframe { get; set; } = "Last 30 Days";
+        [ObservableProperty] public partial string SelectedMetric { get; set; } = "Revenue"; // "Revenue", "Quantity", "Commission"
+        [ObservableProperty] public partial bool HighValueSalesOnly { get; set; }
 
         // Collections
-        public List<string> TimeframeOptions { get; } = new()
-        {
+        public List<string> TimeframeOptions { get; } =
+        [
             "Current Month", "Last Month", "Last 30 Days", "Last 3 Months", "Last 6 Months", "Year to Date"
-        };
+        ];
 
-        public List<string> MetricOptions { get; } = new() { "Revenue", "Quantity", "Commission" };
+        public List<string> MetricOptions { get; } = [ "Revenue", "Quantity", "Commission" ];
 
-        public ObservableCollection<SaleRecord> RecentSales { get; } = new();
+        private ObservableCollection<SaleRecord> RecentSales { get; } = [];
         public DataGridCollectionView RecentSalesView { get; }
-        public ObservableCollection<ChartItem> ChartItems { get; } = new();
+        public ObservableCollection<ChartItem> ChartItems { get; } = [];
 
         // Ledger Search & Filter Panel Properties
-        [ObservableProperty] private string _searchText = string.Empty;
-        [ObservableProperty] private string _selectedSaleTypeFilter = "All";
-        [ObservableProperty] private string _selectedCategoryFilter = "All";
-        [ObservableProperty] private string _selectedDateFilterType = "All Time";
-        [ObservableProperty] private DateTime? _customStartDate = DateTime.Now.AddDays(-30);
-        [ObservableProperty] private DateTime? _customEndDate = DateTime.Now;
+        [ObservableProperty] public partial string SearchText { get; set; } = string.Empty;
+        [ObservableProperty] public partial string SelectedSaleTypeFilter { get; set; } = "All";
+        [ObservableProperty] public partial string SelectedCategoryFilter { get; set; } = "All";
+        [ObservableProperty] public partial string SelectedDateFilterType { get; set; } = "All Time";
+        [ObservableProperty] public partial DateTime? CustomStartDate { get; set; } = DateTime.Now.AddDays(-30);
+        [ObservableProperty] public partial DateTime? CustomEndDate { get; set; } = DateTime.Now;
 
         public bool IsCustomDateFilter => SelectedDateFilterType == "Custom";
 
-        public List<string> SaleTypeFilterOptions { get; } = new()
-        {
+        public List<string> SaleTypeFilterOptions { get; } =
+        [
             "All", "Standard (New)", "Standard (Used)", "eBay", "Warranty", "Return Offset"
-        };
+        ];
 
-        public List<string> DateFilterTypeOptions { get; } = new()
-        {
+        public List<string> DateFilterTypeOptions { get; } =
+        [
             "All Time", "Current Month", "Last Month", "Last 30 Days", "Last 3 Months", "Last 6 Months", "Year to Date", "Custom"
-        };
+        ];
 
-        public ObservableCollection<string> CategoryFilterOptions { get; } = new() { "All" };
+        public ObservableCollection<string> CategoryFilterOptions { get; } = [ "All" ];
 
         // Category Breakdown Aggregations
-        [ObservableProperty] private string _categoryBreakdownMetric = "Dollar Amount"; // "Dollar Amount" or "Quantity"
-        public ObservableCollection<CategoryBreakdownItem> CategoryBreakdownItems { get; } = new();
+        [ObservableProperty] public partial string CategoryBreakdownMetric { get; set; } = "Dollar Amount"; // "Dollar Amount" or "Quantity"
+        public ObservableCollection<CategoryBreakdownItem> CategoryBreakdownItems { get; } = [];
         
-        public List<string> CategoryBreakdownMetricOptions { get; } = new() { "Dollar Amount", "Quantity" };
+        public List<string> CategoryBreakdownMetricOptions { get; } = [ "Dollar Amount", "Quantity" ];
 
-        private static readonly string[] CategoryColors = new[]
-        {
+        private static readonly string[] CategoryColors =
+        [
             "#4F759B", // CS-Blue
             "#A5CC6B", // CS-Green
             "#F5C44C", // CS-Yellow
@@ -83,57 +83,61 @@ namespace SalesLedger.Core.ViewModels
             "#5C5958", // Grays Step 1
             "#95ACC3", // Blues Step 2
             "#705E78"  // Slate Plum (Brand complement)
-        };
+        ];
 
         // CSV Import Wizard Properties
-        [ObservableProperty] private bool _isImportDialogVisible;
-        [ObservableProperty] private string _csvFilePath = string.Empty;
+        [ObservableProperty] public partial bool IsImportDialogVisible { get; set; }
+        [ObservableProperty] public partial string CsvFilePath { get; set; } = string.Empty;
+        
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(IsStandardImport))]
         [NotifyPropertyChangedFor(nameof(IsWarrantyImport))]
         [NotifyPropertyChangedFor(nameof(IsEbayImport))]
         [NotifyPropertyChangedFor(nameof(IsStandardOrEbayImport))]
-        private string _importAsType = "Standard"; // "Standard", "Warranty", or "Ebay"
+        public partial string ImportAsType { get; set; } = "Standard"; // "Standard", "Warranty", or "Ebay"
 
         public bool IsStandardImport => ImportAsType == "Standard";
         public bool IsWarrantyImport => ImportAsType == "Warranty";
         public bool IsEbayImport => ImportAsType == "Ebay";
         public bool IsStandardOrEbayImport => ImportAsType == "Standard" || ImportAsType == "Ebay";
-        public ObservableCollection<string> CsvHeaders { get; } = new();
+        public ObservableCollection<string> CsvHeaders { get; } = [];
 
-        [ObservableProperty] private string _selectedDateHeader = string.Empty;
-        [ObservableProperty] private string _selectedInvoiceHeader = string.Empty;
-        [ObservableProperty] private string _selectedSkuHeader = string.Empty;
-        [ObservableProperty] private string _selectedProductNameHeader = string.Empty;
-        [ObservableProperty] private string _selectedCategoryHeader = string.Empty;
-        [ObservableProperty] private string _selectedPriceHeader = string.Empty;
-        [ObservableProperty] private string _selectedIsUsedHeader = string.Empty;
-        [ObservableProperty] private string _selectedWarrantyTypeHeader = string.Empty;
-        [ObservableProperty] private string _selectedWholesalePriceHeader = string.Empty;
+        [ObservableProperty] public partial string SelectedDateHeader { get; set; } = string.Empty;
+        [ObservableProperty] public partial string SelectedInvoiceHeader { get; set; } = string.Empty;
+        [ObservableProperty] public partial string SelectedSkuHeader { get; set; } = string.Empty;
+        [ObservableProperty] public partial string SelectedProductNameHeader { get; set; } = string.Empty;
+        [ObservableProperty] public partial string SelectedCategoryHeader { get; set; } = string.Empty;
+        [ObservableProperty] public partial string SelectedPriceHeader { get; set; } = string.Empty;
+        [ObservableProperty] public partial string SelectedIsUsedHeader { get; set; } = string.Empty;
+        [ObservableProperty] public partial string SelectedWarrantyTypeHeader { get; set; } = string.Empty;
+        [ObservableProperty] public partial string SelectedWholesalePriceHeader { get; set; } = string.Empty;
 
-        [ObservableProperty] private string _defaultCategory = string.Empty;
-        [ObservableProperty] private string _defaultWarrantyType = string.Empty;
-        [ObservableProperty] private bool _allStandardAreUsed = true;
+        [ObservableProperty] public partial string DefaultCategory { get; set; } = string.Empty;
+        [ObservableProperty] public partial string DefaultWarrantyType { get; set; } = string.Empty;
+        [ObservableProperty] public partial bool AllStandardAreUsed { get; set; } = true;
 
         // Selected Row context actions
         [ObservableProperty]
         [NotifyCanExecuteChangedFor(nameof(EditSaleCommand))]
         [NotifyCanExecuteChangedFor(nameof(ProcessReturnCommand))]
-        private SaleRecord? _selectedSale;
+        public partial SaleRecord? SelectedSale { get; set; }
 
         // Dialog state management
-        [ObservableProperty] private bool _isSaleDialogVisible;
-        [ObservableProperty] private string _dialogTitle = "Add New Transaction";
-        [ObservableProperty] private bool _isEditing;
+        [ObservableProperty] public partial bool IsSaleDialogVisible { get; set; }
+        [ObservableProperty] public partial string DialogTitle { get; set; } = "Add New Transaction";
+        [ObservableProperty] private partial bool IsEditing { get; set; }
+        [ObservableProperty] public partial bool IsRestoreReturnDialogVisible { get; set; }
+        public SaleRecord? SelectedSaleToRestore { get; set; }
         private Guid? _editingSaleId;
 
         // Dialog Bindings
-        [ObservableProperty] private string _invoiceNumber = string.Empty;
-        [ObservableProperty] private string _sku = string.Empty;
-        [ObservableProperty] private string _productName = string.Empty;
-        [ObservableProperty] private string _category = string.Empty;
-        [ObservableProperty] private decimal _salePrice;
-        [ObservableProperty] private DateTime? _transactionDate = DateTime.Now;
+        [ObservableProperty] public partial string InvoiceNumber { get; set; } = string.Empty;
+        [ObservableProperty] public partial string Sku { get; set; } = string.Empty;
+        [ObservableProperty] public partial string ProductName { get; set; } = string.Empty;
+        [ObservableProperty] public partial string Category { get; set; } = string.Empty;
+        [ObservableProperty] public partial decimal SalePrice { get; set; }
+        [ObservableProperty] public partial DateTime? TransactionDate { get; set; } = DateTime.Now;
+        
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(SelectedRecordTypeIndex))]
         [NotifyPropertyChangedFor(nameof(InvoiceLabel))]
@@ -141,7 +145,7 @@ namespace SalesLedger.Core.ViewModels
         [NotifyPropertyChangedFor(nameof(ShowCategory))]
         [NotifyPropertyChangedFor(nameof(ShowUsedGear))]
         [NotifyPropertyChangedFor(nameof(ShowWarranty))]
-        private SaleType _recordType = SaleType.Standard;
+        private partial SaleType RecordType { get; set; } = SaleType.Standard;
 
         public int SelectedRecordTypeIndex
         {
@@ -157,30 +161,26 @@ namespace SalesLedger.Core.ViewModels
         public bool ShowWarranty => RecordType == SaleType.Warranty;
         
         // Standard sale specific
-        [ObservableProperty] private bool _isUsedGear;
+        [ObservableProperty] public partial bool IsUsedGear { get; set; }
         
         // Warranty sale specific
-        [ObservableProperty] private string _warrantyTypeName = string.Empty;
-        [ObservableProperty] private decimal _manufacturerPrice;
+        [ObservableProperty] public partial string WarrantyTypeName { get; set; } = string.Empty;
+        [ObservableProperty] public partial decimal ManufacturerPrice { get; set; }
 
         // Dropdown options
-        public List<string> Categories => _mainVm.LiteDb.GetUserSettings().ProductCategories
+        public List<string> Categories => (_mainVm.LiteDb.GetUserSettings().ProductCategories ?? [])
             .Where(c => c.IsActive)
             .Select(c => c.Name)
             .ToList();
 
-        public List<string> WarrantyTypes => _mainVm.LiteDb.GetUserSettings().WarrantyTypes
+        public List<string> WarrantyTypes => (_mainVm.LiteDb.GetUserSettings().WarrantyTypes ?? [])
             .Where(w => w.IsActive)
             .Select(w => w.Name)
             .ToList();
 
         // Period close state
-        [ObservableProperty] private bool _isPeriodCloseVisible;
-        [ObservableProperty] private string _periodReportName = string.Empty;
-
-        // Tooltip metadata
-        [ObservableProperty] private TrendBucket? _hoveredBucket;
-        [ObservableProperty] private bool _isTooltipVisible;
+        [ObservableProperty] public partial bool IsPeriodCloseVisible { get; set; }
+        [ObservableProperty] public partial string PeriodReportName { get; set; } = string.Empty;
 
         public LedgerDashboardViewModel(MainWindowViewModel mainVm)
         {
@@ -190,7 +190,7 @@ namespace SalesLedger.Core.ViewModels
             LoadData();
         }
 
-        public void LoadData()
+        private void LoadData()
         {
             // Load KPIs
             var summary = _mainVm.Analytics.GetSummary(SelectedTimeframe);
@@ -203,28 +203,47 @@ namespace SalesLedger.Core.ViewModels
             var trends = _mainVm.Analytics.GetTrends(SelectedTimeframe);
             ChartItems.Clear();
 
-            double maxValue = 1.0;
-            var items = new List<(TrendBucket Bucket, double Value)>();
+            double maxVal = 1.0;
+            var items = new List<(TrendBucket Bucket, double PosVal, double NegVal)>();
+
             foreach (var bucket in trends)
             {
-                double val = SelectedMetric switch
+                double posVal = SelectedMetric switch
                 {
                     "Revenue" => bucket.TotalRevenue,
                     "Quantity" => bucket.TotalQuantity,
                     "Commission" => bucket.TotalCommission,
                     _ => bucket.TotalRevenue
                 };
-                items.Add((bucket, val));
-                if (val > maxValue) maxValue = val;
+
+                double negVal = SelectedMetric switch
+                {
+                    "Revenue" => Math.Abs(bucket.ReturnOffsetMetric.Revenue),
+                    "Quantity" => Math.Abs(bucket.ReturnOffsetMetric.Quantity),
+                    "Commission" => Math.Abs(bucket.ReturnOffsetMetric.Commission),
+                    _ => Math.Abs(bucket.ReturnOffsetMetric.Revenue)
+                };
+
+                items.Add((bucket, posVal, negVal));
+                if (posVal > maxVal) maxVal = posVal;
+                if (negVal > maxVal) maxVal = negVal;
             }
 
             foreach (var item in items)
             {
-                double pct = item.Value / maxValue;
-                double h = pct * 180; // max chart height = 180px
-                if (h < 4 && item.Value > 0) h = 4; // minimum visible height
-                
-                var chartItem = new ChartItem(item.Bucket, item.Value, h, SelectedMetric);
+                double posH = 0;
+                double negH = 0;
+
+                if (maxVal > 0)
+                {
+                    posH = (item.PosVal / maxVal) * 130; // max positive height = 130px
+                    if (posH < 4 && item.PosVal > 0) posH = 4;
+
+                    negH = (item.NegVal / maxVal) * 130; // max negative height = 130px
+                    if (negH < 4 && item.NegVal > 0) negH = 4;
+                }
+
+                var chartItem = new ChartItem(item.Bucket, posH, negH, SelectedMetric);
                 ChartItems.Add(chartItem);
             }
 
@@ -251,14 +270,7 @@ namespace SalesLedger.Core.ViewModels
             {
                 CategoryFilterOptions.Add(cat);
             }
-            if (CategoryFilterOptions.Contains(selected))
-            {
-                SelectedCategoryFilter = selected;
-            }
-            else
-            {
-                SelectedCategoryFilter = "All";
-            }
+            SelectedCategoryFilter = CategoryFilterOptions.Contains(selected) ? selected : "All";
         }
 
         private void UpdateCategoryBreakdown()
@@ -271,11 +283,8 @@ namespace SalesLedger.Core.ViewModels
             {
                 foreach (var kvp in bucket.CategoryBreakdown)
                 {
-                    double val = CategoryBreakdownMetric == "Dollar Amount" ? kvp.Value.Revenue : kvp.Value.Quantity;
-                    if (!totals.ContainsKey(kvp.Key))
-                    {
-                        totals[kvp.Key] = 0;
-                    }
+                    double val = CategoryBreakdownMetric == "Dollar Amount" ? kvp.Value.PositiveRevenue : kvp.Value.PositiveQuantity;
+                    totals.TryAdd(kvp.Key, 0);
                     totals[kvp.Key] += val;
                     overallTotal += val;
                 }
@@ -283,7 +292,7 @@ namespace SalesLedger.Core.ViewModels
 
             CategoryBreakdownItems.Clear();
             int colorIndex = 0;
-            foreach (var kvp in totals.OrderByDescending(x => x.Value))
+            foreach (var kvp in totals.Where(x => x.Value > 0).OrderByDescending(x => x.Value))
             {
                 double pct = overallTotal > 0 ? (kvp.Value / overallTotal) * 100 : 0;
                 string valText = CategoryBreakdownMetric == "Dollar Amount" 
@@ -296,7 +305,6 @@ namespace SalesLedger.Core.ViewModels
                 CategoryBreakdownItems.Add(new CategoryBreakdownItem
                 {
                     Category = kvp.Key,
-                    Value = kvp.Value,
                     ValueText = valText,
                     Percentage = pct,
                     Color = color
@@ -338,8 +346,8 @@ namespace SalesLedger.Core.ViewModels
             {
                 query = SelectedSaleTypeFilter switch
                 {
-                    "Standard (New)" => query.Where(x => x.RecordType == SaleType.Standard && (x is StandardSale s && !s.IsUsedGear)),
-                    "Standard (Used)" => query.Where(x => x.RecordType == SaleType.Standard && (x is StandardSale s && s.IsUsedGear)),
+                    "Standard (New)" => query.Where(x => x.RecordType == SaleType.Standard && x is StandardSale { IsUsedGear: false }),
+                    "Standard (Used)" => query.Where(x => x.RecordType == SaleType.Standard && x is StandardSale { IsUsedGear: true }),
                     "eBay" => query.Where(x => x.RecordType == SaleType.Ebay),
                     "Warranty" => query.Where(x => x.RecordType == SaleType.Warranty),
                     "Return Offset" => query.Where(x => x.RecordType == SaleType.ReturnOffset),
@@ -349,11 +357,11 @@ namespace SalesLedger.Core.ViewModels
 
             if (!string.IsNullOrWhiteSpace(SearchText))
             {
-                string search = SearchText.Trim().ToLowerInvariant();
+                string search = SearchText.Trim();
                 query = query.Where(x => 
-                    (x.InvoiceNumber != null && x.InvoiceNumber.ToLowerInvariant().Contains(search)) ||
-                    (x.ProductName != null && x.ProductName.ToLowerInvariant().Contains(search)) ||
-                    (x.Sku != null && x.Sku.ToLowerInvariant().Contains(search))
+                    x.InvoiceNumber.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                    x.ProductName.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                    x.Sku.Contains(search, StringComparison.OrdinalIgnoreCase)
                 );
             }
 
@@ -364,23 +372,24 @@ namespace SalesLedger.Core.ViewModels
             }
         }
 
-        partial void OnSelectedTimeframeChanged(string value) => LoadData();
-        partial void OnSelectedMetricChanged(string value) => LoadData();
-        partial void OnCategoryBreakdownMetricChanged(string value) => UpdateCategoryBreakdown();
-        partial void OnHighValueSalesOnlyChanged(bool value) => LoadSalesList();
-        partial void OnSearchTextChanged(string value) => LoadSalesList();
-        partial void OnSelectedSaleTypeFilterChanged(string value) => LoadSalesList();
-        partial void OnSelectedCategoryFilterChanged(string value) => LoadSalesList();
+        partial void OnSelectedTimeframeChanged(string value) { _ = value; LoadData(); }
+        partial void OnSelectedMetricChanged(string value) { _ = value; LoadData(); }
+        partial void OnCategoryBreakdownMetricChanged(string value) { _ = value; UpdateCategoryBreakdown(); }
+        partial void OnHighValueSalesOnlyChanged(bool value) { _ = value; LoadSalesList(); }
+        partial void OnSearchTextChanged(string value) { _ = value; LoadSalesList(); }
+        partial void OnSelectedSaleTypeFilterChanged(string value) { _ = value; LoadSalesList(); }
+        partial void OnSelectedCategoryFilterChanged(string value) { _ = value; LoadSalesList(); }
         partial void OnSelectedDateFilterTypeChanged(string value)
         {
+            _ = value;
             OnPropertyChanged(nameof(IsCustomDateFilter));
             LoadSalesList();
         }
-        partial void OnCustomStartDateChanged(DateTime? value) => LoadSalesList();
-        partial void OnCustomEndDateChanged(DateTime? value) => LoadSalesList();
+        partial void OnCustomStartDateChanged(DateTime? value) { _ = value; LoadSalesList(); }
+        partial void OnCustomEndDateChanged(DateTime? value) { _ = value; LoadSalesList(); }
 
         [RelayCommand]
-        public void ResetFilters()
+        private void ResetFilters()
         {
             SearchText = string.Empty;
             SelectedSaleTypeFilter = "All";
@@ -393,15 +402,12 @@ namespace SalesLedger.Core.ViewModels
 
         public void OnSyncCompleted()
         {
-            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-            {
-                LoadData();
-            });
+            Avalonia.Threading.Dispatcher.UIThread.Post(LoadData);
         }
 
         // Open Dialog
         [RelayCommand]
-        public void ShowAddSaleDialog()
+        private void ShowAddSaleDialog()
         {
             DialogTitle = "Add New Transaction";
             IsEditing = false;
@@ -422,7 +428,7 @@ namespace SalesLedger.Core.ViewModels
         }
 
         [RelayCommand]
-        public void EditSale(SaleRecord? parameter)
+        private void EditSale(SaleRecord? parameter)
         {
             var target = parameter ?? SelectedSale;
             if (target == null || target.Status == PayoutStatus.ReturnedBeforePayout) return;
@@ -456,19 +462,14 @@ namespace SalesLedger.Core.ViewModels
             IsSaleDialogVisible = true;
         }
 
-        private bool CanEditOrReturn()
-        {
-            return SelectedSale != null && SelectedSale.Status != PayoutStatus.ReturnedBeforePayout;
-        }
-
         [RelayCommand]
-        public void CloseSaleDialog()
+        private void CloseSaleDialog()
         {
             IsSaleDialogVisible = false;
         }
 
         [RelayCommand]
-        public void SaveSale()
+        private void SaveSale()
         {
             if (string.IsNullOrWhiteSpace(InvoiceNumber) || string.IsNullOrWhiteSpace(ProductName))
             {
@@ -547,7 +548,7 @@ namespace SalesLedger.Core.ViewModels
 
             // Calculate commission payout
             var settings = _mainVm.LiteDb.GetUserSettings();
-            sale.CalculatedCommission = _mainVm.CommissionProc.CalculateLineItem(sale, settings.ActiveRules);
+            sale.CalculatedCommission = _mainVm.CommissionProc.CalculateLineItem(sale, settings.ActiveRules ?? []);
 
             // Save to operational document ledger
             if (IsEditing)
@@ -569,7 +570,7 @@ namespace SalesLedger.Core.ViewModels
         }
 
         [RelayCommand]
-        public void ProcessReturn(SaleRecord? parameter)
+        private void ProcessReturn(SaleRecord? parameter)
         {
             var target = parameter ?? SelectedSale;
             if (target == null || target.Status == PayoutStatus.ReturnedBeforePayout) return;
@@ -582,7 +583,7 @@ namespace SalesLedger.Core.ViewModels
         }
 
         [RelayCommand]
-        public void DeleteSale(SaleRecord? parameter)
+        private void DeleteSale(SaleRecord? parameter)
         {
             var target = parameter ?? SelectedSale;
             if (target == null) return;
@@ -599,20 +600,20 @@ namespace SalesLedger.Core.ViewModels
 
         // Close Period dialogs
         [RelayCommand]
-        public void ShowPeriodCloseDialog()
+        private void ShowPeriodCloseDialog()
         {
             PeriodReportName = $"{DateTime.Now:MMMM yyyy} Submission";
             IsPeriodCloseVisible = true;
         }
 
         [RelayCommand]
-        public void ClosePeriodCloseDialog()
+        private void ClosePeriodCloseDialog()
         {
             IsPeriodCloseVisible = false;
         }
 
         [RelayCommand]
-        public void ExecutePeriodClose()
+        private void ExecutePeriodClose()
         {
             if (string.IsNullOrWhiteSpace(PeriodReportName)) return;
 
@@ -651,9 +652,92 @@ namespace SalesLedger.Core.ViewModels
             LoadData();
         }
 
+        [RelayCommand]
+        private void ShowRestoreReturnDialog(SaleRecord? parameter)
+        {
+            var target = parameter ?? SelectedSale;
+            if (target == null || target.Status != PayoutStatus.ReturnedBeforePayout) return;
+
+            SelectedSaleToRestore = target;
+            IsRestoreReturnDialogVisible = true;
+        }
+
+        [RelayCommand]
+        private void CloseRestoreReturnDialog()
+        {
+            IsRestoreReturnDialogVisible = false;
+            SelectedSaleToRestore = null;
+        }
+
+        [RelayCommand]
+        private void ExecuteRestoreReturn()
+        {
+            if (SelectedSaleToRestore == null) return;
+
+            // Restore transaction status
+            SelectedSaleToRestore.Status = PayoutStatus.Pending;
+
+            // Recalculate commission based on current rules
+            var settings = _mainVm.LiteDb.GetUserSettings();
+            SelectedSaleToRestore.CalculatedCommission = _mainVm.CommissionProc.CalculateLineItem(SelectedSaleToRestore, settings.ActiveRules ?? []);
+
+            // Save to operational ledger and sync
+            _mainVm.LiteDb.Sales.Update(SelectedSaleToRestore);
+            _mainVm.Sync.QueueUpsert(SelectedSaleToRestore);
+
+            IsRestoreReturnDialogVisible = false;
+            SelectedSaleToRestore = null;
+
+            // Refresh views
+            LoadData();
+        }
+
+        [RelayCommand]
+        private void PreviewPeriodReport()
+        {
+            // Gather all active pending and returned-before-payout sales (AssociatedReportId is null)
+            var pendingSales = _mainVm.LiteDb.Sales.Find(x => x.Status == PayoutStatus.Pending).ToList();
+            var returnedBeforePayoutSales = _mainVm.LiteDb.Sales.Find(x => x.Status == PayoutStatus.ReturnedBeforePayout && x.AssociatedReportId == null).ToList();
+
+            var allPeriodSales = pendingSales.Concat(returnedBeforePayoutSales).ToList();
+
+            // Create temporary payout report metadata
+            var tempReport = new PayoutReport
+            {
+                Id = Guid.Empty,
+                ReportGeneratedTimestamp = DateTime.UtcNow,
+                ReportName = "Preview (Open Period)",
+                TotalCommissionCalculated = pendingSales.Sum(s => s.CalculatedCommission),
+                LockedSaleIds = allPeriodSales.Select(s => s.Id).ToList()
+            };
+
+            var settings = _mainVm.LiteDb.GetUserSettings();
+            var downloadsPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                "Downloads",
+                "CommissionReport_Preview.pdf"
+            );
+
+            _mainVm.ReportGen.GeneratePdfReport(tempReport, allPeriodSales, settings, downloadsPath);
+
+            try
+            {
+                var psi = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = downloadsPath,
+                    UseShellExecute = true
+                };
+                System.Diagnostics.Process.Start(psi);
+            }
+            catch (Exception)
+            {
+                // Ignore launch failures
+            }
+        }
+
         // CSV Import Wizard Commands
         [RelayCommand]
-        public void ShowImportDialog()
+        private void ShowImportDialog()
         {
             CsvFilePath = string.Empty;
             CsvHeaders.Clear();
@@ -677,30 +761,30 @@ namespace SalesLedger.Core.ViewModels
         }
 
         [RelayCommand]
-        public void CloseImportDialog()
+        private void CloseImportDialog()
         {
             IsImportDialogVisible = false;
         }
 
         [RelayCommand]
-        public async Task BrowseCsvFile()
+        private async Task BrowseCsvFile()
         {
-            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
+            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime { MainWindow: not null } desktop)
             {
                 var csvType = new FilePickerFileType("CSV Files")
                 {
-                    Patterns = new[] { "*.csv" },
-                    MimeTypes = new[] { "text/csv", "text/plain" }
+                    Patterns = [ "*.csv" ],
+                    MimeTypes = [ "text/csv", "text/plain" ]
                 };
 
                 var files = await desktop.MainWindow.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
                 {
                     Title = "Select Spiff Sheet CSV File",
                     AllowMultiple = false,
-                    FileTypeFilter = new[] { csvType }
+                    FileTypeFilter = [ csvType ]
                 });
 
-                if (files != null && files.Count > 0)
+                if (files is { Count: > 0 })
                 {
                     CsvFilePath = files[0].Path.LocalPath;
                     ParseCsvHeaders();
@@ -757,7 +841,7 @@ namespace SalesLedger.Core.ViewModels
         }
 
         [RelayCommand]
-        public void ExecuteCsvImport()
+        private void ExecuteCsvImport()
         {
             if (string.IsNullOrEmpty(CsvFilePath)) return;
 
@@ -813,15 +897,8 @@ namespace SalesLedger.Core.ViewModels
                     if (ImportAsType == "Standard" || ImportAsType == "Ebay")
                     {
                         category = !string.IsNullOrEmpty(catStr) ? catStr : DefaultCategory;
-                        var matchingCategory = settings.ProductCategories.FirstOrDefault(c => c.Name.Equals(category, StringComparison.OrdinalIgnoreCase));
-                        if (matchingCategory == null)
-                        {
-                            category = DefaultCategory;
-                        }
-                        else
-                        {
-                            category = matchingCategory.Name;
-                        }
+                        var matchingCategory = (settings.ProductCategories ?? []).FirstOrDefault(c => c.Name.Equals(category, StringComparison.OrdinalIgnoreCase));
+                        category = matchingCategory == null ? DefaultCategory : matchingCategory.Name;
                     }
 
                     SaleRecord record;
@@ -870,15 +947,8 @@ namespace SalesLedger.Core.ViewModels
                             wholesale = 0m;
                         }
 
-                        var matchingWar = settings.WarrantyTypes.FirstOrDefault(w => w.Name.Equals(warType, StringComparison.OrdinalIgnoreCase));
-                        if (matchingWar == null)
-                        {
-                            war.WarrantyTypeName = DefaultWarrantyType;
-                        }
-                        else
-                        {
-                            war.WarrantyTypeName = matchingWar.Name;
-                        }
+                        var matchingWar = (settings.WarrantyTypes ?? []).FirstOrDefault(w => w.Name.Equals(warType, StringComparison.OrdinalIgnoreCase));
+                        war.WarrantyTypeName = matchingWar == null ? DefaultWarrantyType : matchingWar.Name;
                         
                         war.ManufacturerPrice = wholesale;
                         record = war;
@@ -892,7 +962,7 @@ namespace SalesLedger.Core.ViewModels
                     record.TransactionDate = txDate;
                     record.Status = PayoutStatus.Pending;
 
-                    record.CalculatedCommission = _mainVm.CommissionProc.CalculateLineItem(record, settings.ActiveRules);
+                    record.CalculatedCommission = _mainVm.CommissionProc.CalculateLineItem(record, settings.ActiveRules ?? []);
 
                     _mainVm.LiteDb.Sales.Insert(record);
                     _mainVm.Sync.QueueUpsert(record);
@@ -910,91 +980,77 @@ namespace SalesLedger.Core.ViewModels
 
     public partial class CategoryBreakdownItem : ObservableObject
     {
-        [ObservableProperty] private string _category = string.Empty;
-        [ObservableProperty] private double _value;
-        [ObservableProperty] private string _valueText = string.Empty;
-        [ObservableProperty] private double _percentage;
-        [ObservableProperty] private string _color = "#3B82F6";
+        [ObservableProperty] public partial string Category { get; set; } = string.Empty;
+        [ObservableProperty] public partial string ValueText { get; set; } = string.Empty;
+        [ObservableProperty] public partial double Percentage { get; set; }
+        [ObservableProperty] public partial string Color { get; set; } = "#3B82F6";
     }
 
-    public class CategoryDisplay
+    public class CategoryDisplay(string name, string valText)
     {
-        public string Name { get; } = string.Empty;
-        public string ValueText { get; } = string.Empty;
-        public CategoryDisplay(string name, string valText)
-        {
-            Name = name;
-            ValueText = valText;
-        }
+        public string Name { get; } = name;
+        public string ValueText { get; } = valText;
     }
 
     public class ChartItem
     {
-        public TrendBucket Bucket { get; }
-        public double Value { get; }
-        public double Height { get; }
-        public string Label => Bucket.Label;
-        public string ValueText { get; } = string.Empty;
+        private readonly TrendBucket _bucket;
+        public double PositiveHeight { get; }
+        public double NegativeHeight { get; }
+        public bool HasNegativeValue => NegativeHeight > 0;
+        public string Label => _bucket.Label;
         public List<CategoryDisplay> CategoriesBreakdown { get; } = new();
 
-        public string TotalSalesText => Bucket.TotalRevenue.ToString("C2");
-        public string TotalUnitsText => $"{Bucket.TotalQuantity} units";
-        public string TotalCommissionText => Bucket.TotalCommission.ToString("C2");
-        public string HighestSaleText => Bucket.MaxSalePrice.ToString("C2");
+        public string TotalSalesText => _bucket.TotalRevenue.ToString("C2");
+        public string TotalUnitsText => $"{_bucket.TotalQuantity} units";
+        public string TotalCommissionText => _bucket.TotalCommission.ToString("C2");
+        public string HighestSaleText => _bucket.MaxSalePrice.ToString("C2");
 
         public string StandardBreakdownText { get; }
         public string EbayBreakdownText { get; }
         public string WarrantyBreakdownText { get; }
         public string ReturnOffsetBreakdownText { get; }
-        public bool HasReturnOffsets => Bucket.ReturnOffsetMetric.Quantity != 0 || Bucket.ReturnOffsetMetric.Revenue != 0;
+        public bool HasReturnOffsets => _bucket.ReturnOffsetMetric.Quantity != 0 || _bucket.ReturnOffsetMetric.Revenue != 0;
 
-        public ChartItem(TrendBucket bucket, double value, double height, string metricType)
+        public ChartItem(TrendBucket bucket, double positiveHeight, double negativeHeight, string metricType)
         {
-            Bucket = bucket ?? throw new ArgumentNullException(nameof(bucket));
-            Value = value;
-            Height = height;
-
-            ValueText = metricType switch
-            {
-                "Revenue" => value.ToString("C0"),
-                "Quantity" => $"{value} units",
-                "Commission" => value.ToString("C0"),
-                _ => value.ToString("N0")
-            };
+            _bucket = bucket ?? throw new ArgumentNullException(nameof(bucket));
+            PositiveHeight = positiveHeight;
+            NegativeHeight = negativeHeight;
 
             StandardBreakdownText = metricType switch
             {
-                "Revenue" => bucket.StandardMetric.Revenue.ToString("C2"),
-                "Quantity" => $"{bucket.StandardMetric.Quantity} units",
-                "Commission" => bucket.StandardMetric.Commission.ToString("C2"),
-                _ => bucket.StandardMetric.Revenue.ToString("C2")
+                "Revenue" => _bucket.StandardMetric.Revenue.ToString("C2"),
+                "Quantity" => $"{_bucket.StandardMetric.Quantity} units",
+                "Commission" => _bucket.StandardMetric.Commission.ToString("C2"),
+                _ => _bucket.StandardMetric.Revenue.ToString("C2")
             };
 
             EbayBreakdownText = metricType switch
             {
-                "Revenue" => bucket.EbayMetric.Revenue.ToString("C2"),
-                "Quantity" => $"{bucket.EbayMetric.Quantity} units",
-                "Commission" => bucket.EbayMetric.Commission.ToString("C2"),
-                _ => bucket.EbayMetric.Revenue.ToString("C2")
+                "Revenue" => _bucket.EbayMetric.Revenue.ToString("C2"),
+                "Quantity" => $"{_bucket.EbayMetric.Quantity} units",
+                "Commission" => _bucket.EbayMetric.Commission.ToString("C2"),
+                _ => _bucket.EbayMetric.Revenue.ToString("C2")
             };
 
             WarrantyBreakdownText = metricType switch
             {
-                "Revenue" => bucket.WarrantyMetric.Revenue.ToString("C2"),
-                "Quantity" => $"{bucket.WarrantyMetric.Quantity} units",
-                "Commission" => bucket.WarrantyMetric.Commission.ToString("C2"),
-                _ => bucket.WarrantyMetric.Revenue.ToString("C2")
+                "Revenue" => _bucket.WarrantyMetric.Revenue.ToString("C2"),
+                "Quantity" => $"{_bucket.WarrantyMetric.Quantity} units",
+                "Commission" => _bucket.WarrantyMetric.Commission.ToString("C2"),
+                _ => _bucket.WarrantyMetric.Revenue.ToString("C2")
             };
 
             ReturnOffsetBreakdownText = metricType switch
             {
-                "Revenue" => bucket.ReturnOffsetMetric.Revenue.ToString("C2"),
-                "Quantity" => $"{bucket.ReturnOffsetMetric.Quantity} units",
-                "Commission" => bucket.ReturnOffsetMetric.Commission.ToString("C2"),
-                _ => bucket.ReturnOffsetMetric.Revenue.ToString("C2")
+                "Revenue" => _bucket.ReturnOffsetMetric.Revenue.ToString("C2"),
+                "Quantity" => $"{_bucket.ReturnOffsetMetric.Quantity} units",
+                "Commission" => _bucket.ReturnOffsetMetric.Commission.ToString("C2"),
+                _ => _bucket.ReturnOffsetMetric.Revenue.ToString("C2")
             };
 
-            foreach (var kvp in bucket.CategoryBreakdown)
+            foreach (var kvp in _bucket.CategoryBreakdown)
             {
                 string catValText = metricType switch
                 {

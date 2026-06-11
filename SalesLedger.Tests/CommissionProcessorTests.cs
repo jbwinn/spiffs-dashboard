@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using Xunit;
 using SalesLedger.Core.Models;
 using SalesLedger.Core.Services;
 
@@ -9,9 +6,8 @@ namespace SalesLedger.Tests
     public class CommissionProcessorTests
     {
         private readonly CommissionProcessor _processor = new();
-        private readonly List<CommissionRule> _defaultRules = new()
-        {
-            new CommissionRule
+        private readonly List<CommissionRule> _defaultRules = [
+            new()
             {
                 RuleId = "rule-used",
                 RuleName = "Default Used Gear Rule",
@@ -20,7 +16,7 @@ namespace SalesLedger.Tests
                 CalculationType = PayoutType.PercentageOfPrice,
                 RuleValue = 0.03m // 3%
             },
-            new CommissionRule
+            new()
             {
                 RuleId = "rule-warranty",
                 RuleName = "Default Warranty Rule",
@@ -29,7 +25,7 @@ namespace SalesLedger.Tests
                 CalculationType = PayoutType.PercentageOfPrice,
                 RuleValue = 0.10m // 10%
             },
-            new CommissionRule
+            new()
             {
                 RuleId = "rule-ebay",
                 RuleName = "Default eBay Rule",
@@ -38,7 +34,7 @@ namespace SalesLedger.Tests
                 CalculationType = PayoutType.PercentageOfPrice,
                 RuleValue = 0.10m // 10%
             },
-            new CommissionRule
+            new()
             {
                 RuleId = "rule-cameras",
                 RuleName = "Cameras Standard Rule",
@@ -48,7 +44,7 @@ namespace SalesLedger.Tests
                 CalculationType = PayoutType.PercentageOfPrice,
                 RuleValue = 0.05m // 5%
             },
-            new CommissionRule
+            new()
             {
                 RuleId = "rule-lenses",
                 RuleName = "Lenses Standard Rule",
@@ -58,7 +54,7 @@ namespace SalesLedger.Tests
                 CalculationType = PayoutType.PercentageOfPrice,
                 RuleValue = 0.08m // 8%
             }
-        };
+        ];
 
         [Fact]
         public void StandardSale_UsedGear_TriggersUsedGearRule_First()
@@ -174,9 +170,8 @@ namespace SalesLedger.Tests
         [Fact]
         public void WarrantySale_PercentageOfNetProfit_CalculatesCorrectly()
         {
-            var netProfitRules = new List<CommissionRule>
-            {
-                new CommissionRule
+            List<CommissionRule> netProfitRules = [
+                new()
                 {
                     RuleId = "rule-warranty-netprofit",
                     RuleName = "Warranty Net Profit Rule",
@@ -185,7 +180,7 @@ namespace SalesLedger.Tests
                     CalculationType = PayoutType.PercentageOfNetProfit,
                     RuleValue = 0.10m // 10% of profit
                 }
-            };
+            ];
 
             var sale = new WarrantySale
             {

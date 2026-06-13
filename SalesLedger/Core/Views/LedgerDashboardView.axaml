@@ -420,52 +420,21 @@
 
         <!-- DIALOG OVERLAY: Add / Edit Transaction -->
         <Grid Background="{DynamicResource BgOverlay}" IsVisible="{Binding IsSaleDialogVisible}">
-            <Border Background="{DynamicResource BgCardDark}" BorderBrush="{DynamicResource BorderSlate}" BorderThickness="1" CornerRadius="12" Padding="24" Width="480" VerticalAlignment="Center" HorizontalAlignment="Center">
+            <Border Background="{DynamicResource BgCardDark}" BorderBrush="{DynamicResource BorderSlate}" BorderThickness="1" CornerRadius="12" Padding="24" Width="600" VerticalAlignment="Center" HorizontalAlignment="Center">
                 <StackPanel Spacing="16">
                     <TextBlock Text="{Binding DialogTitle}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
                     
-                    <!-- Form fields -->
-                    <Grid ColumnDefinitions="*, 12, *">
+                    <!-- Shared Transaction Header Fields -->
+                    <Grid ColumnDefinitions="*, 12, *, 12, *">
                         <StackPanel Grid.Column="0" Spacing="4">
                             <TextBlock Text="{Binding InvoiceLabel}" Foreground="{DynamicResource TextPrimary}" FontSize="11"/>
                             <TextBox Text="{Binding InvoiceNumber, Mode=TwoWay}" PlaceholderText="{Binding InvoicePlaceholder}" Height="36" VerticalContentAlignment="Center"/>
                         </StackPanel>
                         <StackPanel Grid.Column="2" Spacing="4">
-                            <TextBlock Text="SKU / Item code" Foreground="{DynamicResource TextPrimary}" FontSize="11"/>
-                            <TextBox Text="{Binding Sku, Mode=TwoWay}" PlaceholderText="e.g. SKU-880" Height="36" VerticalContentAlignment="Center"/>
-                        </StackPanel>
-                    </Grid>
-
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="Product Name" Foreground="{DynamicResource TextPrimary}" FontSize="11"/>
-                        <TextBox Text="{Binding ProductName, Mode=TwoWay}" PlaceholderText="e.g. Sony Alpha 7 IV" Height="36" VerticalContentAlignment="Center"/>
-                    </StackPanel>
-
-                    <Grid ColumnDefinitions="*, 12, *">
-                        <Panel Grid.Column="0">
-                            <!-- Category (Standard / eBay) -->
-                            <StackPanel Spacing="4" IsVisible="{Binding ShowCategory}">
-                                <TextBlock Text="Category" Foreground="{DynamicResource TextPrimary}" FontSize="11"/>
-                                <ComboBox ItemsSource="{Binding Categories}" SelectedItem="{Binding Category, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="36"/>
-                            </StackPanel>
-                            <!-- Warranty Brand (Warranty) -->
-                            <StackPanel Spacing="4" IsVisible="{Binding ShowWarranty}">
-                                <TextBlock Text="Warranty Brand" Foreground="{DynamicResource TextPrimary}" FontSize="11"/>
-                                <ComboBox ItemsSource="{Binding WarrantyTypes}" SelectedItem="{Binding WarrantyTypeName, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="36"/>
-                            </StackPanel>
-                        </Panel>
-                        <StackPanel Grid.Column="2" Spacing="4">
-                            <TextBlock Text="Sale Price" Foreground="{DynamicResource TextPrimary}" FontSize="11"/>
-                            <NumericUpDown Value="{Binding SalePrice, Mode=TwoWay}" Minimum="0" FormatString="C2" Height="36"/>
-                        </StackPanel>
-                    </Grid>
-
-                    <Grid ColumnDefinitions="*, 12, *">
-                        <StackPanel Grid.Column="0" Spacing="4">
                             <TextBlock Text="Transaction Date" Foreground="{DynamicResource TextPrimary}" FontSize="11"/>
                             <CalendarDatePicker SelectedDate="{Binding TransactionDate, Mode=TwoWay}" Height="36" HorizontalAlignment="Stretch" VerticalContentAlignment="Center"/>
                         </StackPanel>
-                        <StackPanel Grid.Column="2" Spacing="4">
+                        <StackPanel Grid.Column="4" Spacing="4">
                             <TextBlock Text="Sale Category Type" Foreground="{DynamicResource TextPrimary}" FontSize="11"/>
                             <ComboBox SelectedIndex="{Binding SelectedRecordTypeIndex, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="36">
                                 <ComboBoxItem Content="Standard Sale"/>
@@ -475,22 +444,131 @@
                         </StackPanel>
                     </Grid>
 
-                    <!-- Standard / eBay Sale Conditional Fields -->
-                    <StackPanel Spacing="6" IsVisible="{Binding ShowUsedGear}">
-                        <CheckBox IsChecked="{Binding IsUsedGear, Mode=TwoWay}">
-                            <TextBlock Text="Is Used Equipment" Foreground="{DynamicResource TextPrimary}" FontSize="12"/>
-                        </CheckBox>
-                    </StackPanel>
+                    <!-- Product Entry Form -->
+                    <Border BorderBrush="{DynamicResource BorderSlate}" BorderThickness="0,1,0,0" Padding="0,12,0,0">
+                        <StackPanel Spacing="12">
+                            <TextBlock Text="Product Details" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"/>
+                            
+                            <Grid ColumnDefinitions="*, 12, *">
+                                <StackPanel Grid.Column="0" Spacing="4">
+                                    <TextBlock Text="SKU / Item code" Foreground="{DynamicResource TextPrimary}" FontSize="11"/>
+                                    <TextBox Text="{Binding Sku, Mode=TwoWay}" PlaceholderText="e.g. SKU-880" Height="36" VerticalContentAlignment="Center"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Spacing="4">
+                                    <TextBlock Text="Product Name" Foreground="{DynamicResource TextPrimary}" FontSize="11"/>
+                                    <TextBox Text="{Binding ProductName, Mode=TwoWay}" PlaceholderText="e.g. Sony Alpha 7 IV" Height="36" VerticalContentAlignment="Center"/>
+                                </StackPanel>
+                            </Grid>
 
-                    <!-- Warranty Sale Conditional Fields -->
-                    <StackPanel Spacing="12" IsVisible="{Binding ShowWarranty}">
-                        <StackPanel Spacing="4">
-                            <TextBlock Text="Manufacturer Wholesale Price" Foreground="{DynamicResource TextPrimary}" FontSize="11"/>
-                            <NumericUpDown Value="{Binding ManufacturerPrice, Mode=TwoWay}" Minimum="0" FormatString="C2" Height="36"/>
+                            <Grid ColumnDefinitions="*, 12, *">
+                                <Panel Grid.Column="0">
+                                    <!-- Category (Standard / eBay) -->
+                                    <StackPanel Spacing="4" IsVisible="{Binding ShowCategory}">
+                                        <TextBlock Text="Category" Foreground="{DynamicResource TextPrimary}" FontSize="11"/>
+                                        <ComboBox ItemsSource="{Binding Categories}" SelectedItem="{Binding Category, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="36"/>
+                                    </StackPanel>
+                                    <!-- Warranty Brand (Warranty) -->
+                                    <StackPanel Spacing="4" IsVisible="{Binding ShowWarranty}">
+                                        <TextBlock Text="Warranty Brand" Foreground="{DynamicResource TextPrimary}" FontSize="11"/>
+                                        <ComboBox ItemsSource="{Binding WarrantyTypes}" SelectedItem="{Binding WarrantyTypeName, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="36"/>
+                                    </StackPanel>
+                                </Panel>
+                                <StackPanel Grid.Column="2" Spacing="4">
+                                    <TextBlock Text="Sale Price" Foreground="{DynamicResource TextPrimary}" FontSize="11"/>
+                                    <NumericUpDown Value="{Binding SalePrice, Mode=TwoWay}" Minimum="0" FormatString="C2" Height="36"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Conditional Fields & Add Button Row -->
+                            <Grid ColumnDefinitions="*, 12, *">
+                                <!-- Standard / eBay Sale Conditional Fields -->
+                                <Panel Grid.Column="0" VerticalAlignment="Center">
+                                    <StackPanel Spacing="6" IsVisible="{Binding ShowUsedGear}">
+                                        <CheckBox IsChecked="{Binding IsUsedGear, Mode=TwoWay}" Margin="0,4,0,0">
+                                            <TextBlock Text="Is Used Equipment" Foreground="{DynamicResource TextPrimary}" FontSize="12"/>
+                                        </CheckBox>
+                                    </StackPanel>
+                                </Panel>
+                                
+                                <!-- Warranty Sale Conditional Fields -->
+                                <Panel Grid.Column="0">
+                                    <StackPanel Spacing="4" IsVisible="{Binding ShowWarranty}">
+                                        <TextBlock Text="Manufacturer Wholesale Price" Foreground="{DynamicResource TextPrimary}" FontSize="11"/>
+                                        <NumericUpDown Value="{Binding ManufacturerPrice, Mode=TwoWay}" Minimum="0" FormatString="C2" Height="36"/>
+                                    </StackPanel>
+                                </Panel>
+
+                                <!-- Add Item Button (Only shown when not editing) -->
+                                <Button Grid.Column="2" Content="+ Add Product to Receipt" Command="{Binding AddDialogItemCommand}" 
+                                        Background="{DynamicResource AccentPurple}" Foreground="White" Height="36" 
+                                        VerticalContentAlignment="Center" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" 
+                                        CornerRadius="6" FontWeight="SemiBold" IsVisible="{Binding !IsEditing}">
+                                    <Button.Styles>
+                                        <Style Selector="Button:pointerover">
+                                            <Setter Property="Background" Value="{DynamicResource AccentPurpleHover}"/>
+                                        </Style>
+                                    </Button.Styles>
+                                </Button>
+                            </Grid>
                         </StackPanel>
+                    </Border>
+
+                    <!-- Added Items List (Only visible when adding and has items) -->
+                    <StackPanel Spacing="8" IsVisible="{Binding HasDialogSales}" Margin="0,4,0,0">
+                        <TextBlock Text="Items Added to Receipt" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondary}"/>
+                        <Border BorderBrush="{DynamicResource BorderSlate}" BorderThickness="1" CornerRadius="6" Background="{DynamicResource BgAppDark}">
+                            <ScrollViewer MaxHeight="140">
+                                <ItemsControl ItemsSource="{Binding DialogSales}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="models:SaleRecord">
+                                            <Border BorderBrush="{DynamicResource BorderSlate}" BorderThickness="0,0,0,1" Padding="8,6" Background="Transparent">
+                                                <Grid ColumnDefinitions="90, *, 70, 70, 100, Auto">
+                                                    <!-- SKU -->
+                                                    <TextBlock Grid.Column="0" Text="{Binding Sku}" Foreground="{DynamicResource TextPrimary}" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                    <!-- Product Name -->
+                                                    <TextBlock Grid.Column="1" Text="{Binding ProductName}" Foreground="{DynamicResource TextPrimary}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                    <!-- Price -->
+                                                    <TextBlock Grid.Column="2" Text="{Binding SalePrice, StringFormat={}{0:C2}}" Foreground="{DynamicResource TextPrimary}" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                    <!-- Commission -->
+                                                    <TextBlock Grid.Column="3" Text="{Binding CalculatedCommission, StringFormat={}{0:C2}}" Foreground="{DynamicResource AccentYellow}" FontSize="11" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                    <!-- Status -->
+                                                    <TextBlock Grid.Column="4" Text="{Binding Status}" Foreground="{DynamicResource TextSecondary}" FontSize="10" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                                    <!-- Action Buttons Panel -->
+                                                    <StackPanel Grid.Column="5" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                                        <!-- Edit Button -->
+                                                        <Button Command="{Binding $parent[UserControl].((vm:LedgerDashboardViewModel)DataContext).EditDialogItemCommand}"
+                                                                CommandParameter="{Binding}"
+                                                                ToolTip.Tip="Edit Item"
+                                                                IsVisible="{Binding IsPending}"
+                                                                Background="{DynamicResource BorderSlate}" Padding="6,2" CornerRadius="4" BorderThickness="0" Height="24" Width="24" VerticalContentAlignment="Center" HorizontalContentAlignment="Center">
+                                                            <TextBlock Text="✎" Foreground="White" FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                                        </Button>
+                                                        <!-- Return Button -->
+                                                        <Button Command="{Binding $parent[UserControl].((vm:LedgerDashboardViewModel)DataContext).ReturnDialogItemCommand}"
+                                                                CommandParameter="{Binding}"
+                                                                ToolTip.Tip="Process Return"
+                                                                IsVisible="{Binding CanProcessReturn}"
+                                                                Background="{DynamicResource AccentRedHover}" Padding="6,2" CornerRadius="4" BorderThickness="0" Height="24" Width="24" VerticalContentAlignment="Center" HorizontalContentAlignment="Center">
+                                                            <TextBlock Text="↶" Foreground="White" FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                                        </Button>
+                                                        <!-- Delete Button -->
+                                                        <Button Command="{Binding $parent[UserControl].((vm:LedgerDashboardViewModel)DataContext).RemoveDialogItemCommand}"
+                                                                CommandParameter="{Binding}"
+                                                                ToolTip.Tip="Delete Item"
+                                                                Background="{DynamicResource AccentRed}" Padding="6,2" CornerRadius="4" BorderThickness="0" Height="24" Width="24" VerticalContentAlignment="Center" HorizontalContentAlignment="Center">
+                                                            <TextBlock Text="✕" Foreground="White" FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                                        </Button>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Border>
                     </StackPanel>
 
-                    <!-- Buttons -->
+                    <!-- Dialog Actions Buttons -->
                     <Grid ColumnDefinitions="*, 12, *" Margin="0,12,0,0">
                         <Button Grid.Column="0" Content="Cancel" Command="{Binding CloseSaleDialogCommand}" Background="{DynamicResource BorderSlate}" Foreground="White" Height="36" VerticalContentAlignment="Center" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" CornerRadius="6">
                             <Button.Styles>

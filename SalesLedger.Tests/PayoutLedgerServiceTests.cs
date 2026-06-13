@@ -114,6 +114,48 @@ namespace SalesLedger.Tests
             Assert.Equal(report.Id, updatedSale2.AssociatedReportId);
         }
 
+        [Fact]
+        public void CloseCurrentPayPeriod_WithMultipleSalesOnSameInvoice_CalculatesCorrectTotals()
+        {
+            var invoiceNum = "INV-SHARED-123";
+            var sale1 = new StandardSale
+            {
+                InvoiceNumber = invoiceNum,
+                ProductName = "Lens A",
+                SalePrice = 1000m,
+                CalculatedCommission = 80.00m,
+                Status = PayoutStatus.Pending
+            };
+            var sale2 = new StandardSale
+            {
+                InvoiceNumber = invoiceNum,
+                ProductName = "Camera B",
+                SalePrice = 2000m,
+                CalculatedCommission = 100.00m,
+                Status = PayoutStatus.Pending
+            };
+            
+            _liteDb.Sales.Insert(sale1);
+            _liteDb.Sales.Insert(sale2);
+
+            var report = _ledgerService.CloseCurrentPayPeriod("August 2026");
+
+            Assert.NotNull(report);
+            Assert.Equal(180.00m, report.TotalCommissionCalculated);
+            Assert.Equal(2, report.LockedSaleIds.Count);
+
+            var updatedSale1 = _liteDb.Sales.FindById(sale1.Id);
+            var updatedSale2 = _liteDb.Sales.FindById(sale2.Id);
+
+            Assert.Equal(PayoutStatus.Paid, updatedSale1.Status);
+            Assert.Equal(report.Id, updatedSale1.AssociatedReportId);
+            Assert.Equal(invoiceNum, updatedSale1.InvoiceNumber);
+
+            Assert.Equal(PayoutStatus.Paid, updatedSale2.Status);
+            Assert.Equal(report.Id, updatedSale2.AssociatedReportId);
+            Assert.Equal(invoiceNum, updatedSale2.InvoiceNumber);
+        }
+
 #if DEBUG
         [Fact]
         public void SeedDebugData_InsertsGenericSales_AndCalculatesCommissions()

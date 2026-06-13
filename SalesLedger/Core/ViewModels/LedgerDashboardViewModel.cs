@@ -129,8 +129,12 @@ namespace SalesLedger.Core.ViewModels
         [ObservableProperty] public partial bool IsRestoreReturnDialogVisible { get; set; }
         public SaleRecord? SelectedSaleToRestore { get; set; }
         private Guid? _editingSaleId;
+        private readonly List<Guid> _originalEditingIds = [];
 
         // Dialog Bindings
+        public ObservableCollection<SaleRecord> DialogSales { get; } = [];
+        public bool HasDialogSales => DialogSales.Count > 0;
+
         [ObservableProperty] public partial string InvoiceNumber { get; set; } = string.Empty;
         [ObservableProperty] public partial string Sku { get; set; } = string.Empty;
         [ObservableProperty] public partial string ProductName { get; set; } = string.Empty;
@@ -424,6 +428,9 @@ namespace SalesLedger.Core.ViewModels
             WarrantyTypeName = WarrantyTypes.FirstOrDefault() ?? string.Empty;
             ManufacturerPrice = 0m;
 
+            DialogSales.Clear();
+            OnPropertyChanged(nameof(HasDialogSales));
+
             IsSaleDialogVisible = true;
         }
 
@@ -438,26 +445,48 @@ namespace SalesLedger.Core.ViewModels
             _editingSaleId = target.Id;
 
             InvoiceNumber = target.InvoiceNumber;
-            Sku = target.Sku;
-            ProductName = target.ProductName;
-            Category = target.Category;
-            SalePrice = target.SalePrice;
             TransactionDate = target.TransactionDate;
             RecordType = target.RecordType;
 
-            if (target is StandardSale std)
+            DialogSales.Clear();
+            _originalEditingIds.Clear();
+
+            // Find all sales with the same InvoiceNumber
+            var receiptSales = _mainVm.LiteDb.Sales.Find(x => x.InvoiceNumber == target.InvoiceNumber).ToList();
+
+            foreach (var sale in receiptSales)
             {
-                IsUsedGear = std.IsUsedGear;
+                _originalEditingIds.Add(sale.Id);
+                if (sale.Id == target.Id)
+                {
+                    // Load the clicked item directly into the input fields
+                    Sku = sale.Sku;
+                    ProductName = sale.ProductName;
+                    Category = sale.Category;
+                    SalePrice = sale.SalePrice;
+                    
+                    if (sale is StandardSale std)
+                    {
+                        IsUsedGear = std.IsUsedGear;
+                    }
+                    else if (sale is EbaySale ebay)
+                    {
+                        IsUsedGear = ebay.IsUsedGear;
+                    }
+                    else if (sale is WarrantySale war)
+                    {
+                        WarrantyTypeName = war.WarrantyTypeName;
+                        ManufacturerPrice = war.ManufacturerPrice;
+                    }
+                }
+                else
+                {
+                    // Put other items in the dialog sales list
+                    DialogSales.Add(sale);
+                }
             }
-            else if (target is EbaySale ebay)
-            {
-                IsUsedGear = ebay.IsUsedGear;
-            }
-            else if (target is WarrantySale war)
-            {
-                WarrantyTypeName = war.WarrantyTypeName;
-                ManufacturerPrice = war.ManufacturerPrice;
-            }
+
+            OnPropertyChanged(nameof(HasDialogSales));
 
             IsSaleDialogVisible = true;
         }
@@ -469,103 +498,210 @@ namespace SalesLedger.Core.ViewModels
         }
 
         [RelayCommand]
-        private void SaveSale()
+        private void AddDialogItem()
         {
-            if (string.IsNullOrWhiteSpace(InvoiceNumber) || string.IsNullOrWhiteSpace(ProductName))
+            if (string.IsNullOrWhiteSpace(ProductName))
             {
                 return;
             }
 
-            SaleRecord sale;
-            bool typeChanged = false;
+            SaleRecord item;
+            bool wasEditingExisting = false;
             SaleRecord? existing = null;
-            if (IsEditing && _editingSaleId.HasValue)
+
+            if (_editingSaleId.HasValue)
             {
                 existing = _mainVm.LiteDb.Sales.FindById(_editingSaleId.Value);
-                if (existing == null || existing.Status == PayoutStatus.ReturnedBeforePayout)
-                {
-                    IsSaleDialogVisible = false;
-                    return;
-                }
-                
-                if (existing.RecordType != RecordType)
-                {
-                    typeChanged = true;
-                }
+                wasEditingExisting = true;
             }
 
-            if (typeChanged || !IsEditing)
+            if (existing != null && existing.RecordType == RecordType)
             {
-                if (RecordType == SaleType.Standard)
-                {
-                    sale = new StandardSale();
-                }
-                else if (RecordType == SaleType.Warranty)
-                {
-                    sale = new WarrantySale();
-                }
-                else
-                {
-                    sale = new EbaySale();
-                }
-                
-                if (IsEditing && existing != null)
-                {
-                    sale.Id = existing.Id;
-                    sale.Status = existing.Status;
-                    sale.AssociatedReportId = existing.AssociatedReportId;
-                }
-                else
-                {
-                    sale.Status = PayoutStatus.Pending;
-                }
+                item = existing;
             }
             else
             {
-                sale = existing!;
+                if (RecordType == SaleType.Standard)
+                {
+                    item = new StandardSale();
+                }
+                else if (RecordType == SaleType.Warranty)
+                {
+                    item = new WarrantySale();
+                }
+                else
+                {
+                    item = new EbaySale();
+                }
+
+                if (wasEditingExisting)
+                {
+                    item.Id = _editingSaleId!.Value;
+                    if (existing != null)
+                    {
+                        item.Status = existing.Status;
+                        item.AssociatedReportId = existing.AssociatedReportId;
+                    }
+                    else
+                    {
+                        item.Status = PayoutStatus.Pending;
+                    }
+                }
+                else
+                {
+                    item.Id = Guid.NewGuid();
+                    item.Status = PayoutStatus.Pending;
+                }
             }
 
-            sale.InvoiceNumber = InvoiceNumber.Trim();
-            sale.Sku = Sku.Trim();
-            sale.ProductName = ProductName.Trim();
-            sale.Category = (RecordType == SaleType.Warranty) ? "Warranty" : Category;
-            sale.SalePrice = SalePrice;
-            sale.TransactionDate = TransactionDate ?? DateTime.Now;
+            // Update item details from input fields
+            item.InvoiceNumber = InvoiceNumber.Trim();
+            item.Sku = Sku.Trim();
+            item.ProductName = ProductName.Trim();
+            item.Category = (RecordType == SaleType.Warranty) ? "Warranty" : Category;
+            item.SalePrice = SalePrice;
+            item.TransactionDate = TransactionDate ?? DateTime.Now;
 
-            if (sale is StandardSale std)
+            if (item is StandardSale std)
             {
                 std.IsUsedGear = IsUsedGear;
             }
-            else if (sale is EbaySale ebay)
+            else if (item is EbaySale ebay)
             {
                 ebay.IsUsedGear = IsUsedGear;
             }
-            else if (sale is WarrantySale war)
+            else if (item is WarrantySale war)
             {
                 war.WarrantyTypeName = WarrantyTypeName;
                 war.ManufacturerPrice = ManufacturerPrice;
             }
 
-            // Calculate commission payout
             var settings = _mainVm.LiteDb.GetUserSettings();
-            sale.CalculatedCommission = _mainVm.CommissionProc.CalculateLineItem(sale, settings.ActiveRules ?? []);
+            item.CalculatedCommission = _mainVm.CommissionProc.CalculateLineItem(item, settings.ActiveRules ?? []);
 
-            // Save to operational document ledger
+            DialogSales.Add(item);
+            OnPropertyChanged(nameof(HasDialogSales));
+
+            // Clear item specific input fields and reset _editingSaleId
+            Sku = string.Empty;
+            ProductName = string.Empty;
+            SalePrice = 0m;
+            ManufacturerPrice = 0m;
+            _editingSaleId = null;
+        }
+
+        [RelayCommand]
+        private void RemoveDialogItem(SaleRecord item)
+        {
+            if (item != null)
+            {
+                DialogSales.Remove(item);
+                OnPropertyChanged(nameof(HasDialogSales));
+            }
+        }
+
+        [RelayCommand]
+        private void EditDialogItem(SaleRecord item)
+        {
+            if (item == null) return;
+
+            // Protection: if the user started typing a new product, add it to the list first
+            if (!string.IsNullOrWhiteSpace(ProductName))
+            {
+                AddDialogItem();
+            }
+
+            // Now load the clicked item into the fields
+            _editingSaleId = item.Id;
+            Sku = item.Sku;
+            ProductName = item.ProductName;
+            Category = item.Category;
+            SalePrice = item.SalePrice;
+            
+            if (item is StandardSale std)
+            {
+                IsUsedGear = std.IsUsedGear;
+            }
+            else if (item is EbaySale ebay)
+            {
+                IsUsedGear = ebay.IsUsedGear;
+            }
+            else if (item is WarrantySale war)
+            {
+                WarrantyTypeName = war.WarrantyTypeName;
+                ManufacturerPrice = war.ManufacturerPrice;
+            }
+
+            DialogSales.Remove(item);
+            OnPropertyChanged(nameof(HasDialogSales));
+        }
+
+        [RelayCommand]
+        private void ReturnDialogItem(SaleRecord item)
+        {
+            if (item != null)
+            {
+                item.Status = PayoutStatus.ReturnedBeforePayout;
+                item.CalculatedCommission = 0m;
+                OnPropertyChanged(nameof(HasDialogSales));
+            }
+        }
+
+        [RelayCommand]
+        private void SaveSale()
+        {
+            if (string.IsNullOrWhiteSpace(InvoiceNumber))
+            {
+                return;
+            }
+
+            // Auto-add current input details if they entered product details
+            if (!string.IsNullOrWhiteSpace(ProductName))
+            {
+                AddDialogItem();
+            }
+
+            if (DialogSales.Count == 0)
+            {
+                return;
+            }
+
+            var settings = _mainVm.LiteDb.GetUserSettings();
+            var currentIds = new HashSet<Guid>();
+
+            foreach (var sale in DialogSales)
+            {
+                sale.InvoiceNumber = InvoiceNumber.Trim();
+                sale.TransactionDate = TransactionDate ?? DateTime.Now;
+                sale.CalculatedCommission = _mainVm.CommissionProc.CalculateLineItem(sale, settings.ActiveRules ?? []);
+
+                var exists = _mainVm.LiteDb.Sales.FindById(sale.Id);
+                if (exists != null)
+                {
+                    _mainVm.LiteDb.Sales.Update(sale);
+                }
+                else
+                {
+                    _mainVm.LiteDb.Sales.Insert(sale);
+                }
+                _mainVm.Sync.QueueUpsert(sale);
+                currentIds.Add(sale.Id);
+            }
+
+            // Delete any items that were originally on the receipt but are no longer present
             if (IsEditing)
             {
-                _mainVm.LiteDb.Sales.Update(sale);
+                foreach (var originalId in _originalEditingIds)
+                {
+                    if (!currentIds.Contains(originalId))
+                    {
+                        _mainVm.LiteDb.Sales.Delete(originalId);
+                        _mainVm.Sync.QueueDelete(originalId);
+                    }
+                }
             }
-            else
-            {
-                _mainVm.LiteDb.Sales.Insert(sale);
-            }
-
-            // Mirror synchronously/asynchronously to DuckDB OLAP
-            _mainVm.Sync.QueueUpsert(sale);
 
             IsSaleDialogVisible = false;
-            
-            // Refresh views
             LoadData();
         }
 

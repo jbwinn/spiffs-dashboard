@@ -35,6 +35,7 @@ public class App : Application
         Resources["AccentPurple"] = new SolidColorBrush(Color.Parse(AppTheme.AccentPurple));
         Resources["AccentPurpleHover"] = new SolidColorBrush(Color.Parse(AppTheme.AccentPurpleHover));
         Resources["AccentOrange"] = new SolidColorBrush(Color.Parse(AppTheme.AccentYellow));
+        Resources["AccentYellow"] = new SolidColorBrush(Color.Parse(AppTheme.AccentYellow));
         Resources["AccentPink"] = new SolidColorBrush(Color.Parse(AppTheme.AccentBrown));
         Resources["AccentPinkHover"] = new SolidColorBrush(Color.Parse(AppTheme.AccentBrownHover));
 

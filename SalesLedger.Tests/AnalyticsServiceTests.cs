@@ -3,183 +3,205 @@ using SalesLedger.Core.Services;
 
 namespace SalesLedger.Tests
 {
-    public class AnalyticsServiceTests : IDisposable
+    public class AnalyticsServiceTests : LedgerTestBase
     {
-        private readonly string _liteDbPath;
-        private readonly string _duckDbPath;
-        private readonly LiteDbService _liteDb;
-        private readonly DuckDbService _duckDb;
-        private readonly SyncPipeline _syncPipeline;
-        private readonly AnalyticsService _analyticsService;
+        private readonly AnalyticsService _analytics;
 
         public AnalyticsServiceTests()
         {
-            _liteDbPath = Path.Combine(Path.GetTempPath(), $"test_lite_{Guid.NewGuid():N}.db");
-            _duckDbPath = Path.Combine(Path.GetTempPath(), $"test_duck_{Guid.NewGuid():N}.duckdb");
+            _analytics = new AnalyticsService(Duck);
+        }
 
-            _liteDb = new LiteDbService(_liteDbPath);
-            _duckDb = new DuckDbService(_duckDbPath);
-            _syncPipeline = new SyncPipeline(_liteDb, _duckDb);
+        /// <summary>Inserts into LiteDB and mirrors to DuckDB directly (the sync pipeline isn't running in tests).</summary>
+        private T Store<T>(T sale) where T : SaleRecord
+        {
+            Lite.Sales.Insert(sale);
+            Duck.UpsertSale(sale);
+            return sale;
+        }
 
-            _analyticsService = new AnalyticsService(_duckDb);
+        private void MirrorAll()
+        {
+            Duck.ClearAll();
+            foreach (var sale in Lite.Sales.FindAll()) Duck.UpsertSale(sale);
         }
 
         [Fact]
-        public void GetSummary_CalculatesCorrectAggregations()
+        public void GetSummary_ReportsGrossSales_ReturnsAndNet()
         {
             var now = DateTime.Now;
 
-            // Inserts standard and warranty sales inside timeframe
-            var standardSale = new StandardSale
+            Store(new StandardSale { InvoiceNumber = "INV-S1", Category = "Cameras", SalePrice = 1000m, CalculatedCommission = 50.00m, TransactionDate = now.AddDays(-2) });
+            Store(new WarrantySale { InvoiceNumber = "INV-W1", Category = "Warranty", SalePrice = 200m, CalculatedCommission = 25.00m, ManufacturerPrice = 50m, TransactionDate = now.AddDays(-1) });
+            Store(new StandardSale
             {
-                InvoiceNumber = "INV-S1",
-                ProductName = "Camera Standard",
-                Category = "Cameras",
-                SalePrice = 1000m,
-                CalculatedCommission = 50.00m,
-                TransactionDate = now.AddDays(-2),
-                Status = PayoutStatus.Pending
-            };
-            var warrantySale = new WarrantySale
-            {
-                InvoiceNumber = "INV-W1",
-                ProductName = "Warranty Plan",
-                Category = "Accessories",
-                SalePrice = 200m,
-                CalculatedCommission = 25.00m,
-                WarrantyTypeName = "1-Year Extension",
-                ManufacturerPrice = 50m,
-                TransactionDate = now.AddDays(-1),
-                Status = PayoutStatus.Pending
-            };
-            var returnedSale = new StandardSale
-            {
-                InvoiceNumber = "INV-R1",
-                ProductName = "Returned Camera",
-                Category = "Cameras",
-                SalePrice = 1500m,
-                CalculatedCommission = 0.00m,
-                TransactionDate = now.AddDays(-3),
-                Status = PayoutStatus.ReturnedBeforePayout // Should be excluded from summary
-            };
+                InvoiceNumber = "INV-R1", Category = "Cameras", SalePrice = 1500m, CalculatedCommission = 0.00m,
+                TransactionDate = now.AddDays(-3), Status = PayoutStatus.ReturnedBeforePayout
+            });
 
-            _liteDb.Sales.Insert(standardSale);
-            _liteDb.Sales.Insert(warrantySale);
-            _liteDb.Sales.Insert(returnedSale);
+            var summary = _analytics.GetSummary("Last 30 Days");
 
-            // Sync manually (since pipeline is asynchronous, we can call directly or wait)
-            _duckDb.UpsertSale(standardSale);
-            _duckDb.UpsertSale(warrantySale);
-            _duckDb.UpsertSale(returnedSale);
-
-            var summary = _analyticsService.GetSummary("Last 30 Days");
-
-            Assert.Equal(1200.00m, summary.TotalSales);
-            Assert.Equal(2, summary.TotalUnitsSold); // Both standardSale and warrantySale count as units sold, returned = 0
+            Assert.Equal(2700.00m, summary.GrossSales);   // everything sold, including the returned camera
+            Assert.Equal(1500.00m, summary.Returns);
+            Assert.Equal(1200.00m, summary.NetSales);
+            Assert.Equal(3, summary.GrossUnitsSold);
+            Assert.Equal(1, summary.UnitsReturned);
+            Assert.Equal(2, summary.TotalUnitsSold);  // net: the returned camera came back
+            Assert.Equal(1, summary.ReturnCount);
             Assert.Equal(75.00m, summary.TotalCommission);
-            Assert.Equal(1000.00m, summary.AverageSalePrice); // Average of standardSale only
+            Assert.Equal(600.00m, summary.AverageSalePrice); // camera + warranty plan; the returned camera isn't counted
         }
 
         [Fact]
-        public void GetSummary_PostPayoutReturn_SubtractsFromRevenueAndCommission_ButAddsZeroToUnitsSold()
+        public void AverageSalePrice_IncludesEverySaleType_ButOnlyItemsKept()
         {
-            var now = DateTime.Now;
+            var day = DateTime.Now.AddDays(-2);
+            AddSale(new StandardSale { Category = "Lens", SalePrice = 1000m, IsUsedGear = false, TransactionDate = day }); // new
+            AddSale(new StandardSale { Category = "Lens", SalePrice = 600m, IsUsedGear = true, TransactionDate = day });   // used
+            AddSale(new EbaySale { Category = "Lens", SalePrice = 800m, TransactionDate = day });                           // eBay
+            AddSale(new WarrantySale { Category = "Warranty", SalePrice = 200m, ManufacturerPrice = 80m, TransactionDate = day }); // warranty
+            var refunded = AddSale(new StandardSale { Category = "Lens", SalePrice = 5000m, TransactionDate = day }, PayoutStatus.Paid);
+            Payout.ProcessReturn(refunded.Id);                     // fully refunded after payout: not kept
+            var partly = AddSale(new StandardSale { Category = "Lens", SalePrice = 400m, TransactionDate = day }, PayoutStatus.Paid);
+            Payout.ProcessReturn(partly, 50m);                     // partial refund: customer kept it
+            MirrorAll();
 
-            var sale = new StandardSale
-            {
-                InvoiceNumber = "INV-T100",
-                ProductName = "Original Camera",
-                Category = "Cameras",
-                SalePrice = 1000m,
-                CalculatedCommission = 50.00m,
-                TransactionDate = now.AddDays(-10),
-                Status = PayoutStatus.Paid
-            };
+            var summary = _analytics.GetSummary("Last 30 Days");
 
-            var returnOffset = new StandardSale
-            {
-                InvoiceNumber = "INV-T100",
-                ProductName = "[RETURN] - Original Camera",
-                Category = "Cameras",
-                SalePrice = -1000m,
-                CalculatedCommission = -50.00m,
-                TransactionDate = now.AddDays(-2),
-                Status = PayoutStatus.Pending,
-                IsReturn = true,
-                OriginalSaleId = sale.Id
-            };
-
-            _liteDb.Sales.Insert(sale);
-            _liteDb.Sales.Insert(returnOffset);
-
-            _duckDb.UpsertSale(sale);
-            _duckDb.UpsertSale(returnOffset);
-
-            var summary = _analyticsService.GetSummary("Last 30 Days");
-
-            // Total sales = 1000 + (-1000) = 0
-            Assert.Equal(0.00m, summary.TotalSales);
-            // Units sold = 1 (original) + 0 (return) = 1
-            Assert.Equal(1, summary.TotalUnitsSold);
-            // Total commission = 50 + (-50) = 0
-            Assert.Equal(0.00m, summary.TotalCommission);
-            // ASP should only be of original sale = 1000
-            Assert.Equal(1000.00m, summary.AverageSalePrice);
+            Assert.Equal((1000m + 600m + 800m + 200m + 400m) / 5, summary.AverageSalePrice);
+            Assert.Equal(summary.AverageSalePrice, PeriodTotals.From(Lite.Sales.FindAll()).AverageSalePrice); // PDF agrees
         }
 
         [Fact]
-        public void GetTrends_PopulatesContiguousBuckets_AndCategoryMetrics()
+        public void GetSummary_PostPayoutReturn_CountsAsAReturn_NotAsNegativeSales()
         {
             var now = DateTime.Now;
-            var sale1 = new StandardSale
+            var sale = Store(new StandardSale
             {
-                InvoiceNumber = "INV-T1",
-                Category = "Cameras",
-                SalePrice = 1000m,
-                CalculatedCommission = 50.00m,
-                TransactionDate = now.AddDays(-5),
-                Status = PayoutStatus.Pending
-            };
-            var sale2 = new StandardSale
+                InvoiceNumber = "INV-T100", Category = "Cameras", SalePrice = 1000m, CalculatedCommission = 50.00m,
+                TransactionDate = now.AddDays(-10), Status = PayoutStatus.Paid
+            });
+            Store(new StandardSale
             {
-                InvoiceNumber = "INV-T2",
-                Category = "Lenses",
-                SalePrice = 800m,
-                CalculatedCommission = 64.00m,
-                TransactionDate = now.AddDays(-2),
-                Status = PayoutStatus.Pending
-            };
+                InvoiceNumber = "INV-T100", ProductName = "[RETURN] - Original Camera", Category = "Cameras",
+                SalePrice = -1000m, CalculatedCommission = -50.00m, TransactionDate = now.AddDays(-2),
+                IsReturn = true, OriginalSaleId = sale.Id, CompletesRefund = true
+            });
 
-            _liteDb.Sales.Insert(sale1);
-            _liteDb.Sales.Insert(sale2);
+            var summary = _analytics.GetSummary("Last 30 Days");
 
-            _duckDb.UpsertSale(sale1);
-            _duckDb.UpsertSale(sale2);
-
-            var trends = _analyticsService.GetTrends("Last 30 Days");
-
-            Assert.NotEmpty(trends);
-            // Verify category-specific quantities/revenue mapped correctly
-            var cameraBucket = trends.FirstOrDefault(x => x.PeriodStart.Date == sale1.TransactionDate.Date);
-            Assert.NotNull(cameraBucket);
-            Assert.True(cameraBucket.CategoryBreakdown.ContainsKey("Cameras"));
-            Assert.Equal(1000, cameraBucket.CategoryBreakdown["Cameras"].Revenue);
-
-            var lensBucket = trends.FirstOrDefault(x => x.PeriodStart.Date == sale2.TransactionDate.Date);
-            Assert.NotNull(lensBucket);
-            Assert.True(lensBucket.CategoryBreakdown.ContainsKey("Lenses"));
-            Assert.Equal(800, lensBucket.CategoryBreakdown["Lenses"].Revenue);
+            Assert.Equal(1000.00m, summary.GrossSales);
+            Assert.Equal(1000.00m, summary.Returns);
+            Assert.Equal(0.00m, summary.NetSales);
+            Assert.Equal(1, summary.GrossUnitsSold);
+            Assert.Equal(1, summary.ReturnCount);
+            Assert.Equal(0.00m, summary.TotalCommission); // commission stays net: it's what gets paid
+            Assert.Equal(0.00m, summary.AverageSalePrice); // the only sale came back
+            Assert.Equal(0, summary.TotalUnitsSold);
         }
 
-        public void Dispose()
+        [Fact]
+        public void GetSummary_PartialReturn_ReducesNetByTheRefundOnly()
         {
-            _syncPipeline.Stop();
-            _liteDb.Dispose();
-            _duckDb.Dispose();
+            var sale = AddSale(NewLens(1000m), PayoutStatus.Paid);
+            Payout.ProcessReturn(sale, 250m);
+            MirrorAll();
 
-            try { File.Delete(_liteDbPath); } catch (Exception) { /* ignore */ }
-            try { File.Delete(_duckDbPath); } catch (Exception) { /* ignore */ }
-            try { File.Delete(_duckDbPath + ".tmp"); } catch (Exception) { /* ignore */ }
+            var summary = _analytics.GetSummary("Last 30 Days");
+
+            Assert.Equal(1000m, summary.GrossSales);
+            Assert.Equal(250m, summary.Returns);
+            Assert.Equal(750m, summary.NetSales);
+            Assert.Equal(60.00m, summary.TotalCommission); // 80 - 20 clawback
+        }
+
+        [Fact]
+        public void GetTrends_ReturnBeforePayout_IsNotCountedTwice()
+        {
+            // Before the fix: the blue bar dropped the sale AND the red bar showed the return (net -1000 instead of 0)
+            var date = DateTime.Now.AddDays(-3);
+            Store(new StandardSale { Category = "Lens", SalePrice = 1000m, TransactionDate = date, Status = PayoutStatus.ReturnedBeforePayout });
+
+            var bucket = _analytics.GetTrends("Last 30 Days").Single(b => b.PeriodStart == date.Date);
+
+            Assert.Equal(1000, bucket.TotalRevenue);                  // gross
+            Assert.Equal(-1000, bucket.ReturnOffsetMetric.Revenue);   // the return
+            Assert.Equal(0, bucket.TotalRevenue + bucket.ReturnOffsetMetric.Revenue);
+        }
+
+        [Fact]
+        public void GetTrends_PopulatesContiguousBuckets_AndGrossCategoryMetrics()
+        {
+            var now = DateTime.Now;
+            var sale1 = Store(new StandardSale { InvoiceNumber = "INV-T1", Category = "Cameras", SalePrice = 1000m, CalculatedCommission = 50.00m, TransactionDate = now.AddDays(-5) });
+            var sale2 = Store(new StandardSale { InvoiceNumber = "INV-T2", Category = "Lenses", SalePrice = 800m, CalculatedCommission = 64.00m, TransactionDate = now.AddDays(-2) });
+
+            var trends = _analytics.GetTrends("Last 30 Days");
+
+            Assert.Equal(31, trends.Count); // one bucket per day, including empty days
+            Assert.Equal(1000, trends.Single(x => x.PeriodStart == sale1.TransactionDate.Date).CategoryBreakdown["Cameras"].Revenue);
+            Assert.Equal(800, trends.Single(x => x.PeriodStart == sale2.TransactionDate.Date).CategoryBreakdown["Lenses"].Revenue);
+        }
+
+        [Fact]
+        public void CurrentPayPeriod_IncludesEveryUnpaidRecord_WhateverItsDate_AndNothingPaid()
+        {
+            var old = AddSale(NewLens(1000m, "INV-OLD", DateTime.Now.AddMonths(-3)));   // unpaid, months ago
+            AddSale(NewLens(500m, "INV-NEW", DateTime.Now.AddDays(-1)));                 // unpaid, recent
+            AddSale(NewLens(700m, "INV-PAID", DateTime.Now.AddDays(-2)), PayoutStatus.Paid);
+            var paidThenReturned = AddSale(NewLens(400m, "INV-PR", DateTime.Now.AddDays(-20)), PayoutStatus.Paid);
+            Payout.ProcessReturn(paidThenReturned, 400m);                                  // pending return line
+            MirrorAll();
+
+            var range = _analytics.ResolveRange(AnalyticsService.CurrentPayPeriod);
+            var summary = _analytics.GetSummary(range);
+
+            Assert.True(range.CurrentPayPeriodOnly);
+            Assert.Equal(old.TransactionDate.Date, range.Start);
+            Assert.Equal(1500m, summary.GrossSales);      // the two unpaid sales, not the paid ones
+            Assert.Equal(400m, summary.Returns);          // the unpaid return line
+            Assert.Equal(120.00m - 32.00m, summary.TotalCommission); // 80 + 40 - 32 clawback: what the next payout totals
+            Assert.Equal("week", range.Scale);            // ~3 months of data
+        }
+
+        [Fact]
+        public void CurrentPayPeriod_ExcludesReturnsAlreadyOnAReport()
+        {
+            var returned = AddSale(NewLens(1000m));
+            Payout.ProcessReturn(returned.Id);             // returned before payout
+            Payout.CloseCurrentPayPeriod("Closed");        // now attached to a report
+            AddSale(NewLens(200m, "INV-OPEN"));
+            MirrorAll();
+
+            var summary = _analytics.GetSummary(_analytics.ResolveRange(AnalyticsService.CurrentPayPeriod));
+
+            Assert.Equal(200m, summary.GrossSales);
+            Assert.Equal(0m, summary.Returns);
+        }
+
+        [Fact]
+        public void CustomRange_IsInclusiveOfWholeDays_AndChoosesAScale()
+        {
+            var range = _analytics.ResolveRange(AnalyticsService.Custom, new DateTime(2026, 3, 10), new DateTime(2026, 3, 1));
+
+            Assert.Equal(new DateTime(2026, 3, 1), range.Start);              // reversed dates are swapped
+            Assert.Equal(new DateTime(2026, 3, 10).AddDays(1).AddTicks(-1), range.End);
+            Assert.Equal("day", range.Scale);
+
+            Assert.Equal("week", _analytics.ResolveRange(AnalyticsService.Custom, new DateTime(2026, 1, 1), new DateTime(2026, 4, 30)).Scale);
+            Assert.Equal("month", _analytics.ResolveRange(AnalyticsService.Custom, new DateTime(2025, 1, 1), new DateTime(2026, 4, 30)).Scale);
+        }
+
+        [Fact]
+        public void CustomRange_OnlyCountsSalesInsideIt()
+        {
+            Store(new StandardSale { Category = "Lens", SalePrice = 100m, TransactionDate = new DateTime(2026, 3, 1, 9, 0, 0) });
+            Store(new StandardSale { Category = "Lens", SalePrice = 200m, TransactionDate = new DateTime(2026, 3, 10, 23, 30, 0) });
+            Store(new StandardSale { Category = "Lens", SalePrice = 400m, TransactionDate = new DateTime(2026, 3, 11, 0, 30, 0) });
+
+            var summary = _analytics.GetSummary(_analytics.ResolveRange(AnalyticsService.Custom, new DateTime(2026, 3, 1), new DateTime(2026, 3, 10)));
+
+            Assert.Equal(300m, summary.GrossSales);
         }
     }
 }

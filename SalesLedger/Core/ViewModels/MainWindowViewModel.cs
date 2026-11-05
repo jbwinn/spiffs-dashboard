@@ -18,66 +18,119 @@ namespace SalesLedger.Core.ViewModels
         public AnalyticsService Analytics { get; }
         public ReportGenerator ReportGen { get; }
         public CommissionProcessor CommissionProc { get; }
+        public ReceiptService Receipts { get; }
+        public CsvImportService CsvImport { get; }
+        public SkuCheckService SkuCheck { get; }
+        public ReportService ReportService { get; }
+
+        /// <summary>Opening, printing and copying files (replaced in tests so nothing real is launched).</summary>
+        public IShellActions Shell { get; }
 
         // Workspaces
         private LedgerDashboardViewModel DashboardViewModel { get; }
+        private ReportsViewModel ReportsViewModel { get; }
         private FullScreenSettingsViewModel SettingsViewModel { get; }
 
         [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(IsDashboardActive))]
+        [NotifyPropertyChangedFor(nameof(IsReportsActive))]
+        [NotifyPropertyChangedFor(nameof(IsSettingsActive))]
         private ObservableObject _currentActiveWorkspace;
 
-        [ObservableProperty]
-        private string _settingsButtonText = "Settings Panel";
+        public bool IsDashboardActive => CurrentActiveWorkspace == DashboardViewModel;
+        public bool IsReportsActive => CurrentActiveWorkspace == ReportsViewModel;
+        public bool IsSettingsActive => CurrentActiveWorkspace == SettingsViewModel;
 
-        public MainWindowViewModel()
+        public MainWindowViewModel() : this(dataDirectory: null, checkForUpdates: true)
         {
-            // Initialize operational store
-            LiteDb = new LiteDbService();
+        }
 
-            // Initialize DuckDB OLAP store
-            DuckDb = new DuckDbService();
+        /// <summary>
+        /// <paramref name="dataDirectory"/> overrides where the databases live (used by UI tests so they never touch
+        /// real data); null uses the normal per-user location. <paramref name="shell"/> replaces the real
+        /// open/print/copy actions (tests).
+        /// </summary>
+        public MainWindowViewModel(string? dataDirectory, bool checkForUpdates, IShellActions? shell = null)
+        {
+            // Initialize operational store and DuckDB OLAP store
+            if (dataDirectory == null)
+            {
+                LiteDb = new LiteDbService();
+                DuckDb = new DuckDbService();
+            }
+            else
+            {
+                LiteDb = new LiteDbService(System.IO.Path.Combine(dataDirectory, "salesledger.db"));
+                DuckDb = new DuckDbService(System.IO.Path.Combine(dataDirectory, "analytics.duckdb"));
+            }
+
+            Shell = shell ?? new WindowsShellActions();
 
             // Setup channels pipeline
             Sync = new SyncPipeline(LiteDb, DuckDb);
 
             // Wire domain dependencies
-            PayoutService = new PayoutLedgerService(LiteDb, Sync);
+            CommissionProc = new CommissionProcessor();
+            PayoutService = new PayoutLedgerService(LiteDb, Sync, CommissionProc);
+            Receipts = new ReceiptService(LiteDb, Sync, CommissionProc, PayoutService);
+            CsvImport = new CsvImportService(LiteDb, Sync, CommissionProc);
+            SkuCheck = new SkuCheckService(LiteDb, PayoutService);
             Analytics = new AnalyticsService(DuckDb);
             ReportGen = new ReportGenerator();
-            CommissionProc = new CommissionProcessor();
+            ReportService = new ReportService(LiteDb, PayoutService, ReportGen);
 
             // Setup Workspaces
             DashboardViewModel = new LedgerDashboardViewModel(this);
+            ReportsViewModel = new ReportsViewModel(this);
             SettingsViewModel = new FullScreenSettingsViewModel(this);
 
             _currentActiveWorkspace = DashboardViewModel;
+
+            // Fix up return lines recorded before full-return tracking existed (the rebuild below then picks them up)
+            PayoutService.RefreshReturnCompletionFlags();
 
             // Subscribe and start the background sync pipeline
             Sync.SyncCompleted += DashboardViewModel.OnSyncCompleted;
             Sync.Start();
 
             // Run update check in background task
-            Task.Run(CheckForApplicationUpdatesAsync);
+            if (checkForUpdates)
+            {
+                Task.Run(CheckForApplicationUpdatesAsync);
+            }
         }
 
+        /// <summary>Header navigation: "Dashboard", "Reports" or "Settings".</summary>
         [RelayCommand]
-        private void ToggleWorkspace()
+        private void Navigate(string? destination)
         {
-            if (CurrentActiveWorkspace == DashboardViewModel)
+            switch (destination)
             {
-                SettingsViewModel.LoadSettings();
-                CurrentActiveWorkspace = SettingsViewModel;
-                SettingsButtonText = "Dashboard Panel";
-            }
-            else
-            {
-                CurrentActiveWorkspace = DashboardViewModel;
-                SettingsButtonText = "Settings Panel";
+                case "Reports":
+                    ReportsViewModel.Refresh();
+                    CurrentActiveWorkspace = ReportsViewModel;
+                    break;
+                case "Settings":
+                    SettingsViewModel.LoadSettings();
+                    CurrentActiveWorkspace = SettingsViewModel;
+                    break;
+                default:
+                    // Settings may have changed categories, warranty types or rules; a finalize changes statuses
+                    DashboardViewModel.Refresh();
+                    CurrentActiveWorkspace = DashboardViewModel;
+                    break;
             }
         }
+
+        /// <summary>Called after the ledger changes outside the dashboard (e.g. a pay period was finalized).</summary>
+        public void NotifyLedgerChanged() => DashboardViewModel.Refresh();
+
+        /// <summary>True once shutting down: work queued for the UI thread (e.g. a refresh after a sync) must not touch the databases.</summary>
+        public bool IsDisposed { get; private set; }
 
         public void Dispose()
         {
+            IsDisposed = true;
             Sync.SyncCompleted -= DashboardViewModel.OnSyncCompleted;
             Sync.Stop();
             LiteDb.Dispose();

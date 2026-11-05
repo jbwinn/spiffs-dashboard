@@ -1,5 +1,20 @@
 # TECHNICAL PRODUCT REQUIREMENT DOCUMENT (PRD)
 
+> **Implementation notes: where the code has moved on from this original spec.** The README describes current behavior in full.
+>
+> * **eBay sales**: `SaleType.Ebay` / `EbaySale` and `RuleScope.AllEbay` were added alongside Standard and Warranty.
+> * **Returns**: post-payout returns do **not** create `ReturnOffsetSale` records (that class remains only for legacy data). A return line is a record of the original's concrete type with `IsReturn = true`, `OriginalSaleId`, a negative `SalePrice` (the refund) and a negative `CalculatedCommission` (the clawback). Returns can be **partial**, and several can be recorded against one sale up to its price. Percentage commission is clawed back in proportion to the refund; flat-rate commission is clawed back in full by the first return. A full return of a pending sale with no earlier returns still just sets `ReturnedBeforePayout` (Branch A in §5.3).
+> * **Commission engine**: `PercentageOfNetProfit` is implemented (§5.2's sample only shows price and flat). The matching rule's payout type is stored on each sale as `AppliedCalculationType`.
+> * **Rule changes** re-run the waterfall on every pending sale (the open pay period); paid sales are never recalculated.
+> * **Receipts**: multi-item receipts are sales sharing an `InvoiceNumber` (matched case-insensitively). Editing a receipt only modifies pending items; paid items are read-only and can only be returned (`ReceiptService`). Products can be added to any receipt, including paid ones; each item keeps its own date.
+> * **Dashboard KPIs** show gross sales with returns and net alongside; commission stays net. Timeframes include a custom range and "Current Pay Period" (all unpaid records).
+> * **Duplicate SKUs** on used or eBay entries trigger a confirmation (`SkuCheckService`), in both manual entry and CSV import: a resale notice if every earlier sale of the SKU was returned, otherwise a duplicate warning.
+> * **Payout reports** (§6.1's "Payout Control Center") live on their own page: the open period with Preview / Finalize, and a history of finalized reports (finalize date, the period from the previous finalize, sale dates) with Print / View / Copy / Show in Folder / Regenerate. PDFs are saved to a configurable folder (default `Documents\Sales Ledger Reports`); `PayoutReport.PdfPath` records where (`ReportService`).
+> * **CSV import** (not in this spec) has a review step: bad rows are reported rather than defaulted, possible duplicates are flagged for review, and the import is a single LiteDB transaction (`CsvImportService`).
+> * **Rule reordering** uses ▲/▼ buttons; **Reset Database** requires typing `RESET`.
+> * **Release packaging** uses `-e SalesLedger.exe` (not `LedgerUI.exe` as in §7.1), and updates come from a Velopack `GithubSource`.
+> * **Dates** are local time throughout (see README §4).
+
 **Project Title:** Standalone Sales Ledger, Commission Analytics, and Reporting Engine
 
 **Target Deployment OS:** Windows 10 / 11 (AMD64 Architecture)

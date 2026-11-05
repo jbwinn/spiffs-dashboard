@@ -26,7 +26,8 @@ namespace SalesLedger.Core.Services
             var dbPath = Path.Combine(appDataDir, "salesledger.db");
 
             // Setup polymorphic mapping for LiteDB
-            var mapper = new BsonMapper();
+            // Keep blank text as blank (LiteDB's default stores it as null)
+            var mapper = new BsonMapper { EmptyStringToNull = false };
             mapper.Entity<SaleRecord>().Id(x => x.Id);
 
             _db = new LiteDatabase(dbPath, mapper);
@@ -45,7 +46,8 @@ namespace SalesLedger.Core.Services
                 Directory.CreateDirectory(directory);
             }
 
-            var mapper = new BsonMapper();
+            // Keep blank text as blank (LiteDB's default stores it as null)
+            var mapper = new BsonMapper { EmptyStringToNull = false };
             mapper.Entity<SaleRecord>().Id(x => x.Id);
 
             _db = new LiteDatabase(customDbPath, mapper);
@@ -70,6 +72,24 @@ namespace SalesLedger.Core.Services
         public void SaveUserSettings(UserSettings settings)
         {
             Settings.Upsert(settings);
+        }
+
+        /// <summary>
+        /// Runs the action inside a LiteDB transaction: either every write in it is saved, or none are.
+        /// </summary>
+        public void RunInTransaction(Action action)
+        {
+            _db.BeginTrans();
+            try
+            {
+                action();
+                _db.Commit();
+            }
+            catch
+            {
+                _db.Rollback();
+                throw;
+            }
         }
 
         private void InitializeDefaultSettings()
@@ -482,7 +502,7 @@ namespace SalesLedger.Core.Services
 
             foreach (var sale in sampleSales)
             {
-                sale.CalculatedCommission = commissionProc.CalculateLineItem(sale, rules);
+                commissionProc.ApplyCommission(sale, rules);
                 Sales.Insert(sale);
             }
         }

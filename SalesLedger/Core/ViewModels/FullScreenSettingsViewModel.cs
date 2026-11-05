@@ -81,11 +81,77 @@ namespace SalesLedger.Core.ViewModels
             LoadSettings();
         }
 
+        // Report storage
+        [ObservableProperty] public partial string ReportsFolderText { get; private set; } = string.Empty;
+        [ObservableProperty] public partial bool IsCustomReportsFolder { get; private set; }
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(HasReportsFolderMessage))]
+        public partial string ReportsFolderMessage { get; private set; } = string.Empty;
+
+        public bool HasReportsFolderMessage => !string.IsNullOrEmpty(ReportsFolderMessage);
+
+        private void RefreshReportsFolder()
+        {
+            ReportsFolderText = _mainVm.ReportService.ReportsFolder;
+            IsCustomReportsFolder = !_mainVm.ReportService.IsUsingDefaultFolder;
+        }
+
+        [RelayCommand]
+        private async Task ChangeReportsFolder()
+        {
+            if (Avalonia.Application.Current?.ApplicationLifetime is not Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime { MainWindow: { } window })
+            {
+                return;
+            }
+
+            System.IO.Directory.CreateDirectory(ReportsFolderText);
+            var current = await window.StorageProvider.TryGetFolderFromPathAsync(new Uri(ReportsFolderText));
+            var folders = await window.StorageProvider.OpenFolderPickerAsync(new Avalonia.Platform.Storage.FolderPickerOpenOptions
+            {
+                Title = "Choose where payout reports are saved",
+                AllowMultiple = false,
+                SuggestedStartLocation = current
+            });
+
+            if (folders is { Count: > 0 } && folders[0].Path is { IsFile: true } uri)
+            {
+                var path = uri.LocalPath;
+                _mainVm.ReportService.SetReportsFolder(path);
+                RefreshReportsFolder();
+                ReportsFolderMessage = "New reports will be saved here. Reports already saved stay where they are; use Regenerate on the Payout Reports page to save a copy here.";
+            }
+        }
+
+        [RelayCommand]
+        private void UseDefaultReportsFolder()
+        {
+            _mainVm.ReportService.SetReportsFolder(null);
+            RefreshReportsFolder();
+            ReportsFolderMessage = "Reports will be saved to the default folder.";
+        }
+
+        [RelayCommand]
+        private void OpenReportsFolder()
+        {
+            try
+            {
+                System.IO.Directory.CreateDirectory(ReportsFolderText);
+                _mainVm.Shell.OpenFolder(ReportsFolderText);
+            }
+            catch (Exception ex)
+            {
+                ReportsFolderMessage = $"Couldn't open the folder: {ex.Message}";
+            }
+        }
+
         public void LoadSettings()
         {
             var settings = _mainVm.LiteDb.GetUserSettings();
             UserDisplayName = settings.UserDisplayName;
             AutoUpdateEnabled = settings.AutoUpdateEnabled;
+            RefreshReportsFolder();
+            ReportsFolderMessage = string.Empty;
 
             Categories.Clear();
             foreach (var cat in settings.ProductCategories ?? [])
@@ -172,9 +238,37 @@ namespace SalesLedger.Core.ViewModels
             _mainVm.IsUpdateDialogVisible = true;
         }
 
+        public const string ResetConfirmationWord = "RESET";
+
+        [ObservableProperty] public partial bool IsResetConfirmVisible { get; set; }
+
+        [ObservableProperty]
+        [NotifyCanExecuteChangedFor(nameof(ResetDatabaseCommand))]
+        public partial string ResetConfirmationText { get; set; } = string.Empty;
+
         [RelayCommand]
+        private void ShowResetConfirm()
+        {
+            ResetConfirmationText = string.Empty;
+            IsResetConfirmVisible = true;
+        }
+
+        [RelayCommand]
+        private void CloseResetConfirm()
+        {
+            IsResetConfirmVisible = false;
+            ResetConfirmationText = string.Empty;
+        }
+
+        private bool CanResetDatabase() => ResetConfirmationText.Trim() == ResetConfirmationWord;
+
+        [RelayCommand(CanExecute = nameof(CanResetDatabase))]
         private void ResetDatabase()
         {
+            if (!CanResetDatabase()) return;
+            IsResetConfirmVisible = false;
+            ResetConfirmationText = string.Empty;
+
             try
             {
                 // Delete all records from LiteDB collections
@@ -346,12 +440,12 @@ namespace SalesLedger.Core.ViewModels
             };
 
             Rules.Add(newRule);
-            SaveTaxonomyAndRules();
+            var changed = SaveTaxonomyAndRules();
 
             // Clear inputs
             NewRuleName = string.Empty;
             NewRuleValue = 0m;
-            ShowStatus("Rule added to waterfall.", false);
+            ShowStatus("Rule added to waterfall." + RecalcSuffix(changed), false);
         }
 
         [RelayCommand]
@@ -405,10 +499,10 @@ namespace SalesLedger.Core.ViewModels
                 Rules[index] = _editingRuleInstance;
             }
 
-            SaveTaxonomyAndRules();
+            var changed = SaveTaxonomyAndRules();
             IsEditRuleDialogVisible = false;
             _editingRuleInstance = null;
-            ShowStatus("Rule edited successfully.", false);
+            ShowStatus("Rule edited successfully." + RecalcSuffix(changed), false);
         }
 
         [RelayCommand]
@@ -419,8 +513,8 @@ namespace SalesLedger.Core.ViewModels
             // Re-order remaining rules
             var sorted = Rules.OrderBy(r => r.PriorityOrder).ToList();
             RefreshRulesList(sorted);
-            SaveTaxonomyAndRules();
-            ShowStatus("Rule removed.", false);
+            var changed = SaveTaxonomyAndRules();
+            ShowStatus("Rule removed." + RecalcSuffix(changed), false);
         }
 
         [RelayCommand]
@@ -437,7 +531,8 @@ namespace SalesLedger.Core.ViewModels
             Rules[index] = prev;
             Rules[index - 1] = rule;
 
-            SaveTaxonomyAndRules();
+            var changed = SaveTaxonomyAndRules();
+            ShowStatus($"'{rule.RuleName}' moved up." + RecalcSuffix(changed), false);
         }
 
         [RelayCommand]
@@ -454,10 +549,15 @@ namespace SalesLedger.Core.ViewModels
             Rules[index] = next;
             Rules[index + 1] = rule;
 
-            SaveTaxonomyAndRules();
+            var changed = SaveTaxonomyAndRules();
+            ShowStatus($"'{rule.RuleName}' moved down." + RecalcSuffix(changed), false);
         }
 
-        private void SaveTaxonomyAndRules()
+        /// <summary>
+        /// Saves taxonomy and rules, then re-runs the rules on every pending sale in the current pay period.
+        /// Returns the number of pending sales whose commission changed.
+        /// </summary>
+        private int SaveTaxonomyAndRules()
         {
             var settings = _mainVm.LiteDb.GetUserSettings();
             settings.ProductCategories = Categories.ToList();
@@ -465,9 +565,16 @@ namespace SalesLedger.Core.ViewModels
             settings.ActiveRules = Rules.ToList();
             _mainVm.LiteDb.SaveUserSettings(settings);
 
-            // Rebuild DuckDB analytics to apply new rule priorities or category status shifts
-            _mainVm.Sync.QueueRebuild();
+            // Rule changes apply to everything still pending (paid sales stay locked); changed sales are synced to DuckDB
+            return _mainVm.PayoutService.RecalculatePendingCommissions();
         }
+
+        private static string RecalcSuffix(int changed) => changed switch
+        {
+            0 => string.Empty,
+            1 => " 1 pending sale was recalculated.",
+            _ => $" {changed} pending sales were recalculated."
+        };
 
         private void ShowStatus(string message, bool isError)
         {

@@ -50,6 +50,23 @@
                             CornerRadius="6" 
                             HorizontalAlignment="Left"/>
 
+                    <!-- Report Storage Section -->
+                    <Border BorderBrush="{DynamicResource BorderSlate}" BorderThickness="0,1,0,0" Margin="0,20,0,0" Padding="0,20,0,0">
+                        <StackPanel Spacing="12">
+                            <TextBlock Text="Report Storage" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
+                            <TextBlock Text="Where payout report PDFs are saved when you finalize a pay period." FontSize="12" Foreground="{DynamicResource TextSecondary}"/>
+                            <Border Background="{DynamicResource BgAppDark}" BorderBrush="{DynamicResource BorderSlate}" BorderThickness="1" CornerRadius="6" Padding="10,8">
+                                <TextBlock Text="{Binding ReportsFolderText}" FontSize="12" Foreground="{DynamicResource TextPrimary}" TextWrapping="Wrap"/>
+                            </Border>
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <Button Content="Change Folder…" Command="{Binding ChangeReportsFolderCommand}" Background="{DynamicResource AccentBlue}" Foreground="White" Padding="16,8" CornerRadius="6"/>
+                                <Button Content="Open Folder" Command="{Binding OpenReportsFolderCommand}" Background="{DynamicResource BorderSlate}" Foreground="White" Padding="16,8" CornerRadius="6"/>
+                                <Button Content="Use Default" Command="{Binding UseDefaultReportsFolderCommand}" IsVisible="{Binding IsCustomReportsFolder}" Background="{DynamicResource BorderSlate}" Foreground="White" Padding="16,8" CornerRadius="6"/>
+                            </StackPanel>
+                            <TextBlock Text="{Binding ReportsFolderMessage}" IsVisible="{Binding HasReportsFolderMessage}" FontSize="11" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+
                     <!-- Application Updates Section -->
                     <Border BorderBrush="{DynamicResource BorderSlate}" BorderThickness="0,1,0,0" Margin="0,20,0,0" Padding="0,20,0,0">
                         <StackPanel Spacing="12">
@@ -91,8 +108,8 @@
                             <TextBlock Text="System Utilities" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
                             <TextBlock Text="Clear all transactions, payouts, and reset settings back to default presets." FontSize="12" Foreground="{DynamicResource TextSecondary}"/>
                             
-                            <Button Content="Reset Database" 
-                                    Command="{Binding ResetDatabaseCommand}" 
+                            <Button Content="Reset Database..."
+                                    Command="{Binding ShowResetConfirmCommand}"
                                     Background="{DynamicResource AccentRed}" 
                                     Foreground="White" 
                                     Padding="16,8" 
@@ -107,7 +124,9 @@
 
         <!-- TAB 2: Taxonomy -->
         <TabItem Header="Taxonomy &amp; Lists">
-            <Grid ColumnDefinitions="*, *" Margin="0,16,0,0" HorizontalAlignment="Stretch">
+            <Grid RowDefinitions="Auto, *" Margin="0,16,0,0">
+            <TextBlock Grid.Row="0" Text="{Binding StatusMessage}" Foreground="{Binding IsStatusError, Converter={StaticResource StatusColorConverter}}" FontSize="12" IsVisible="{Binding HasStatusMessage}" Margin="0,0,0,12" TextWrapping="Wrap"/>
+            <Grid Grid.Row="1" ColumnDefinitions="*, *" HorizontalAlignment="Stretch">
                 <!-- Column 1: Product Categories -->
                 <Border Grid.Column="0" Background="{DynamicResource BgCardDark}" BorderBrush="{DynamicResource BorderSlate}" BorderThickness="1" CornerRadius="8" Padding="20" Margin="0,0,12,0">
                     <Grid RowDefinitions="Auto, Auto, *">
@@ -224,6 +243,7 @@
                     </Grid>
                 </Border>
             </Grid>
+            </Grid>
         </TabItem>
 
         <!-- TAB 3: Commission Waterfall -->
@@ -232,9 +252,11 @@
                 <!-- Left: Rules Reordering Waterfall -->
                 <Border Grid.Column="0" Background="{DynamicResource BgCardDark}" BorderBrush="{DynamicResource BorderSlate}" BorderThickness="1" CornerRadius="8" Padding="20">
                     <Grid RowDefinitions="Auto, *">
-                        <StackPanel Grid.Row="0" Margin="0,0,0,16">
+                        <StackPanel Grid.Row="0" Margin="0,0,0,16" Spacing="2">
                             <TextBlock Text="Priority Waterfall (First-Match Wins)" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
                             <TextBlock Text="Rearrange rules to solve overlap conflicts. Active transaction evaluations run top-to-bottom." FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
+                            <TextBlock Text="Rule changes are applied to every pending sale in the current pay period. Paid sales are not changed." FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
+                            <TextBlock Text="{Binding StatusMessage}" Foreground="{Binding IsStatusError, Converter={StaticResource StatusColorConverter}}" FontSize="12" IsVisible="{Binding HasStatusMessage}" Margin="0,6,0,0" TextWrapping="Wrap"/>
                         </StackPanel>
 
                         <!-- Rules List -->
@@ -419,6 +441,39 @@
                             </Style>
                         </Button.Styles>
                     </Button>
+                </Grid>
+            </StackPanel>
+        </Border>
+    </Grid>
+
+    <!-- Reset Database Confirmation: must type RESET -->
+    <Grid Background="{DynamicResource BgOverlay}"
+          IsVisible="{Binding IsResetConfirmVisible}"
+          HorizontalAlignment="Stretch"
+          VerticalAlignment="Stretch">
+        <Border Background="{DynamicResource BgCardDark}"
+                BorderBrush="{DynamicResource AccentRed}"
+                BorderThickness="1.5"
+                CornerRadius="12"
+                Width="460"
+                Padding="28"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center">
+            <StackPanel Spacing="16">
+                <TextBlock Text="Reset Database?" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource AccentRed}"/>
+                <TextBlock Text="This permanently deletes every transaction, every payout report, and all of your settings, categories and commission rules. It cannot be undone."
+                           FontSize="13" Foreground="{DynamicResource TextPrimary}" TextWrapping="Wrap"/>
+                <StackPanel Spacing="6">
+                    <TextBlock Text="Type RESET to confirm" Foreground="{DynamicResource TextSecondary}" FontSize="12"/>
+                    <TextBox Text="{Binding ResetConfirmationText, Mode=TwoWay}" PlaceholderText="RESET" Height="36" VerticalContentAlignment="Center"/>
+                </StackPanel>
+                <Grid ColumnDefinitions="*, *" ColumnSpacing="16" Margin="0,8,0,0">
+                    <Button Grid.Column="0" Content="Cancel" Command="{Binding CloseResetConfirmCommand}"
+                            Background="{DynamicResource BorderSlate}" Foreground="{DynamicResource TextPrimary}" FontWeight="SemiBold"
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="12,10" CornerRadius="6" BorderThickness="0"/>
+                    <Button Grid.Column="1" Content="Delete Everything" Command="{Binding ResetDatabaseCommand}"
+                            Background="{DynamicResource AccentRed}" Foreground="White" FontWeight="SemiBold"
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="12,10" CornerRadius="6" BorderThickness="0"/>
                 </Grid>
             </StackPanel>
         </Border>

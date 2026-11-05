@@ -4,6 +4,9 @@ obj/
 publish/
 Releases/
 
+# Test run output (hang dumps, logs)
+TestResults/
+
 # JetBrains Rider & IntelliJ
 .idea/
 *.sln.DotSettings.user

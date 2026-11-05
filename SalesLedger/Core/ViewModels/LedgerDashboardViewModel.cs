@@ -3,13 +3,9 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Avalonia;
 using Avalonia.Collections;
-using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Platform.Storage;
 using SalesLedger.Core.Models;
 using SalesLedger.Core.Services;
 
@@ -19,21 +15,39 @@ namespace SalesLedger.Core.ViewModels
     {
         private readonly MainWindowViewModel _mainVm;
 
-        // KPI Properties
-        [ObservableProperty] public partial decimal TotalSales { get; set; }
-        [ObservableProperty] public partial int TotalUnitsSold { get; set; }
+        // KPI Properties. Sales are gross (everything sold, including items later returned); returns and net are shown alongside.
+        [ObservableProperty] public partial decimal GrossSales { get; set; }
+        [ObservableProperty] public partial decimal ReturnsAmount { get; set; }
+        [ObservableProperty] public partial decimal NetSales { get; set; }
+        [ObservableProperty] public partial int ReturnCount { get; set; }
+        [ObservableProperty] public partial string SalesSubText { get; set; } = string.Empty;
+        [ObservableProperty] public partial int TotalUnitsSold { get; set; }   // net: less items fully returned
+        [ObservableProperty] public partial int GrossUnitsSold { get; set; }
+        [ObservableProperty] public partial int UnitsReturned { get; set; }
+        [ObservableProperty] public partial string UnitsSubText { get; set; } = string.Empty;
         [ObservableProperty] public partial decimal TotalCommission { get; set; }
         [ObservableProperty] public partial decimal AverageSalePrice { get; set; }
 
         // Timeframe & Metric selections
-        [ObservableProperty] public partial string SelectedTimeframe { get; set; } = "Last 30 Days";
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(IsCustomTimeframe))]
+        public partial string SelectedTimeframe { get; set; } = "Last 30 Days";
+
         [ObservableProperty] public partial string SelectedMetric { get; set; } = "Revenue"; // "Revenue", "Quantity", "Commission"
         [ObservableProperty] public partial bool HighValueSalesOnly { get; set; }
+
+        // Custom timeframe range (used when SelectedTimeframe is "Custom")
+        [ObservableProperty] public partial DateTime? ChartStartDate { get; set; } = DateTime.Today.AddDays(-30);
+        [ObservableProperty] public partial DateTime? ChartEndDate { get; set; } = DateTime.Today;
+        public bool IsCustomTimeframe => SelectedTimeframe == AnalyticsService.Custom;
+
+        /// <summary>The dates the dashboard is showing, e.g. "Oct 4, 2026 – Nov 3, 2026".</summary>
+        [ObservableProperty] public partial string RangeDescription { get; set; } = string.Empty;
 
         // Collections
         public List<string> TimeframeOptions { get; } =
         [
-            "Current Month", "Last Month", "Last 30 Days", "Last 3 Months", "Last 6 Months", "Year to Date"
+            AnalyticsService.CurrentPayPeriod, "Current Month", "Last Month", "Last 30 Days", "Last 3 Months", "Last 6 Months", "Year to Date", AnalyticsService.Custom
         ];
 
         public List<string> MetricOptions { get; } = [ "Revenue", "Quantity", "Commission" ];
@@ -54,12 +68,12 @@ namespace SalesLedger.Core.ViewModels
 
         public List<string> SaleTypeFilterOptions { get; } =
         [
-            "All", "Standard (New)", "Standard (Used)", "eBay", "Warranty", "Return Offset"
+            "All", "Standard (New)", "Standard (Used)", "eBay", "Warranty", "Returns"
         ];
 
         public List<string> DateFilterTypeOptions { get; } =
         [
-            "All Time", "Current Month", "Last Month", "Last 30 Days", "Last 3 Months", "Last 6 Months", "Year to Date", "Custom"
+            "All Time", AnalyticsService.CurrentPayPeriod, "Current Month", "Last Month", "Last 30 Days", "Last 3 Months", "Last 6 Months", "Year to Date", "Custom"
         ];
 
         public ObservableCollection<string> CategoryFilterOptions { get; } = [ "All" ];
@@ -67,7 +81,7 @@ namespace SalesLedger.Core.ViewModels
         // Category Breakdown Aggregations
         [ObservableProperty] public partial string CategoryBreakdownMetric { get; set; } = "Dollar Amount"; // "Dollar Amount" or "Quantity"
         public ObservableCollection<CategoryBreakdownItem> CategoryBreakdownItems { get; } = [];
-        
+
         public List<string> CategoryBreakdownMetricOptions { get; } = [ "Dollar Amount", "Quantity" ];
 
         private static readonly string[] CategoryColors =
@@ -85,55 +99,86 @@ namespace SalesLedger.Core.ViewModels
             "#705E78"  // Slate Plum (Brand complement)
         ];
 
-        // CSV Import Wizard Properties
-        [ObservableProperty] public partial bool IsImportDialogVisible { get; set; }
-        [ObservableProperty] public partial string CsvFilePath { get; set; } = string.Empty;
-        
-        [ObservableProperty]
-        [NotifyPropertyChangedFor(nameof(IsStandardImport))]
-        [NotifyPropertyChangedFor(nameof(IsWarrantyImport))]
-        [NotifyPropertyChangedFor(nameof(IsEbayImport))]
-        [NotifyPropertyChangedFor(nameof(IsStandardOrEbayImport))]
-        public partial string ImportAsType { get; set; } = "Standard"; // "Standard", "Warranty", or "Ebay"
+        // Last trend query, reused when only the category breakdown metric changes
+        private List<TrendBucket> _lastTrends = [];
 
-        public bool IsStandardImport => ImportAsType == "Standard";
-        public bool IsWarrantyImport => ImportAsType == "Warranty";
-        public bool IsEbayImport => ImportAsType == "Ebay";
-        public bool IsStandardOrEbayImport => ImportAsType == "Standard" || ImportAsType == "Ebay";
-        public ObservableCollection<string> CsvHeaders { get; } = [];
-
-        [ObservableProperty] public partial string SelectedDateHeader { get; set; } = string.Empty;
-        [ObservableProperty] public partial string SelectedInvoiceHeader { get; set; } = string.Empty;
-        [ObservableProperty] public partial string SelectedSkuHeader { get; set; } = string.Empty;
-        [ObservableProperty] public partial string SelectedProductNameHeader { get; set; } = string.Empty;
-        [ObservableProperty] public partial string SelectedCategoryHeader { get; set; } = string.Empty;
-        [ObservableProperty] public partial string SelectedPriceHeader { get; set; } = string.Empty;
-        [ObservableProperty] public partial string SelectedIsUsedHeader { get; set; } = string.Empty;
-        [ObservableProperty] public partial string SelectedWarrantyTypeHeader { get; set; } = string.Empty;
-        [ObservableProperty] public partial string SelectedWholesalePriceHeader { get; set; } = string.Empty;
-
-        [ObservableProperty] public partial string DefaultCategory { get; set; } = string.Empty;
-        [ObservableProperty] public partial string DefaultWarrantyType { get; set; } = string.Empty;
-        [ObservableProperty] public partial bool AllStandardAreUsed { get; set; } = true;
+        // Sub-dialogs
+        public CsvImportViewModel Import { get; }
+        public ReturnDialogViewModel ReturnDialog { get; }
 
         // Selected Row context actions
         [ObservableProperty]
-        [NotifyCanExecuteChangedFor(nameof(EditSaleCommand))]
+        [NotifyCanExecuteChangedFor(nameof(OpenReceiptCommand))]
         [NotifyCanExecuteChangedFor(nameof(ProcessReturnCommand))]
         public partial SaleRecord? SelectedSale { get; set; }
 
-        // Dialog state management
+        // Ledger-level error banner (e.g. a delete that isn't allowed)
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(HasLedgerMessage))]
+        public partial string LedgerMessage { get; set; } = string.Empty;
+
+        public bool HasLedgerMessage => !string.IsNullOrEmpty(LedgerMessage);
+
+        // Receipt dialog state
         [ObservableProperty] public partial bool IsSaleDialogVisible { get; set; }
         [ObservableProperty] public partial string DialogTitle { get; set; } = "Add New Transaction";
         [ObservableProperty] private partial bool IsEditing { get; set; }
         [ObservableProperty] public partial bool IsRestoreReturnDialogVisible { get; set; }
         public SaleRecord? SelectedSaleToRestore { get; set; }
-        private Guid? _editingSaleId;
-        private readonly List<Guid> _originalEditingIds = [];
 
-        // Dialog Bindings
-        public ObservableCollection<SaleRecord> DialogSales { get; } = [];
-        public bool HasDialogSales => DialogSales.Count > 0;
+        // The receipt line currently loaded into the product fields (null = entering a new product)
+        private ReceiptLineViewModel? _editingLine;
+        private readonly HashSet<Guid> _removedItemIds = [];
+        private readonly Dictionary<Guid, StagedReturn> _stagedReturns = [];
+
+        // Existing-receipt context: the receipt's date when it was opened/loaded (null = brand-new receipt),
+        // the invoice that was loaded by typing its number, and the date choice for products added to it
+        private DateTime? _receiptDate;
+        private string? _loadedInvoice;
+        private DateTime? _dateBeforeLoad;
+        private bool? _newItemsUseToday;
+
+        /// <summary>Explains what's in the dialog, e.g. "INV-123 already has 2 items..."</summary>
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(HasReceiptNotice))]
+        public partial string ReceiptNotice { get; set; } = string.Empty;
+
+        public bool HasReceiptNotice => !string.IsNullOrEmpty(ReceiptNotice);
+
+        // Generic confirmation popup (used-SKU warning, date choice for added products)
+        private Action? _confirmPrimaryAction;
+        private Action? _confirmSecondaryAction;
+
+        [ObservableProperty] public partial bool IsConfirmVisible { get; set; }
+        [ObservableProperty] public partial string ConfirmTitle { get; set; } = string.Empty;
+        [ObservableProperty] public partial string ConfirmMessage { get; set; } = string.Empty;
+        [ObservableProperty] public partial string ConfirmPrimaryText { get; set; } = "OK";
+        [ObservableProperty] public partial string ConfirmCancelText { get; set; } = "Cancel";
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(HasConfirmSecondary))]
+        public partial string ConfirmSecondaryText { get; set; } = string.Empty;
+
+        public bool HasConfirmSecondary => !string.IsNullOrEmpty(ConfirmSecondaryText);
+
+        // Product name autofill, built from names already in the ledger
+        private List<ProductSuggestion> _productSuggestions = [];
+        private bool _suppressSuggestionFill;
+
+        [ObservableProperty] public partial List<string> ProductNameSuggestions { get; private set; } = [];
+        [ObservableProperty] public partial string? SelectedProductSuggestion { get; set; }
+
+        public ObservableCollection<ReceiptLineViewModel> DialogLines { get; } = [];
+        public bool HasDialogSales => DialogLines.Count > 0;
+
+        /// <summary>The invoice number can't change once part of the receipt is locked, or the receipt would split.</summary>
+        [ObservableProperty] public partial bool IsInvoiceLocked { get; set; }
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(HasDialogError))]
+        public partial string DialogErrorMessage { get; set; } = string.Empty;
+
+        public bool HasDialogError => !string.IsNullOrEmpty(DialogErrorMessage);
 
         [ObservableProperty] public partial string InvoiceNumber { get; set; } = string.Empty;
         [ObservableProperty] public partial string Sku { get; set; } = string.Empty;
@@ -141,7 +186,7 @@ namespace SalesLedger.Core.ViewModels
         [ObservableProperty] public partial string Category { get; set; } = string.Empty;
         [ObservableProperty] public partial decimal SalePrice { get; set; }
         [ObservableProperty] public partial DateTime? TransactionDate { get; set; } = DateTime.Now;
-        
+
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(SelectedRecordTypeIndex))]
         [NotifyPropertyChangedFor(nameof(InvoiceLabel))]
@@ -163,54 +208,67 @@ namespace SalesLedger.Core.ViewModels
         public bool ShowCategory => RecordType == SaleType.Standard || RecordType == SaleType.Ebay;
         public bool ShowUsedGear => RecordType == SaleType.Standard || RecordType == SaleType.Ebay;
         public bool ShowWarranty => RecordType == SaleType.Warranty;
-        
+
         // Standard sale specific
         [ObservableProperty] public partial bool IsUsedGear { get; set; }
-        
+
         // Warranty sale specific
         [ObservableProperty] public partial string WarrantyTypeName { get; set; } = string.Empty;
         [ObservableProperty] public partial decimal ManufacturerPrice { get; set; }
 
-        // Dropdown options
-        public List<string> Categories => (_mainVm.LiteDb.GetUserSettings().ProductCategories ?? [])
-            .Where(c => c.IsActive)
-            .Select(c => c.Name)
-            .ToList();
-
-        public List<string> WarrantyTypes => (_mainVm.LiteDb.GetUserSettings().WarrantyTypes ?? [])
-            .Where(w => w.IsActive)
-            .Select(w => w.Name)
-            .ToList();
-
-        // Period close state
-        [ObservableProperty] public partial bool IsPeriodCloseVisible { get; set; }
-        [ObservableProperty] public partial string PeriodReportName { get; set; } = string.Empty;
+        // Dropdown options (cached; refreshed on every LoadData)
+        [ObservableProperty] public partial List<string> Categories { get; private set; } = [];
+        [ObservableProperty] public partial List<string> WarrantyTypes { get; private set; } = [];
 
         public LedgerDashboardViewModel(MainWindowViewModel mainVm)
         {
             _mainVm = mainVm ?? throw new ArgumentNullException(nameof(mainVm));
+            Import = new CsvImportViewModel(_mainVm.LiteDb, _mainVm.CsvImport, _mainVm.SkuCheck, LoadData);
+            ReturnDialog = new ReturnDialogViewModel(_mainVm.PayoutService);
+
             RecentSalesView = new DataGridCollectionView(RecentSales);
             RecentSalesView.SortDescriptions.Add(DataGridSortDescription.FromPath("TransactionDate", System.ComponentModel.ListSortDirection.Descending));
             LoadData();
         }
 
+        /// <summary>Reloads KPIs, charts, dropdowns and the ledger grid.</summary>
+        public void Refresh() => LoadData();
+
         private void LoadData()
         {
+            RefreshTaxonomy();
+
+            var range = _mainVm.Analytics.ResolveRange(SelectedTimeframe, ChartStartDate, ChartEndDate);
+            RangeDescription = range.CurrentPayPeriodOnly
+                ? $"Unpaid sales and returns (not yet finalized), dated {range.Start:MMM d, yyyy} – {range.End:MMM d, yyyy}"
+                : $"{range.Start:MMM d, yyyy} – {range.End:MMM d, yyyy}";
+
             // Load KPIs
-            var summary = _mainVm.Analytics.GetSummary(SelectedTimeframe);
-            TotalSales = summary.TotalSales;
+            var summary = _mainVm.Analytics.GetSummary(range);
+            GrossSales = summary.GrossSales;
+            ReturnsAmount = summary.Returns;
+            NetSales = summary.NetSales;
+            ReturnCount = summary.ReturnCount;
+            SalesSubText = summary.Returns != 0
+                ? $"−{summary.Returns:C} returns · {summary.NetSales:C} net"
+                : "No returns in this range";
             TotalUnitsSold = summary.TotalUnitsSold;
+            GrossUnitsSold = summary.GrossUnitsSold;
+            UnitsReturned = summary.UnitsReturned;
+            UnitsSubText = summary.UnitsReturned != 0
+                ? $"{summary.GrossUnitsSold} sold · {summary.UnitsReturned} returned"
+                : "No items returned";
             TotalCommission = summary.TotalCommission;
             AverageSalePrice = summary.AverageSalePrice;
 
             // Load Trends
-            var trends = _mainVm.Analytics.GetTrends(SelectedTimeframe);
+            _lastTrends = _mainVm.Analytics.GetTrends(range);
             ChartItems.Clear();
 
             double maxVal = 1.0;
             var items = new List<(TrendBucket Bucket, double PosVal, double NegVal)>();
 
-            foreach (var bucket in trends)
+            foreach (var bucket in _lastTrends)
             {
                 double posVal = SelectedMetric switch
                 {
@@ -259,10 +317,13 @@ namespace SalesLedger.Core.ViewModels
 
             // Load Sales list
             LoadSalesList();
+        }
 
-            // Notify dependent dropdown properties
-            OnPropertyChanged(nameof(Categories));
-            OnPropertyChanged(nameof(WarrantyTypes));
+        private void RefreshTaxonomy()
+        {
+            var settings = _mainVm.LiteDb.GetUserSettings();
+            Categories = (settings.ProductCategories ?? []).Where(c => c.IsActive).Select(c => c.Name).ToList();
+            WarrantyTypes = (settings.WarrantyTypes ?? []).Where(w => w.IsActive).Select(w => w.Name).ToList();
         }
 
         private void UpdateCategoryFilterOptions()
@@ -279,15 +340,14 @@ namespace SalesLedger.Core.ViewModels
 
         private void UpdateCategoryBreakdown()
         {
-            var trends = _mainVm.Analytics.GetTrends(SelectedTimeframe);
             var totals = new Dictionary<string, double>();
             double overallTotal = 0;
 
-            foreach (var bucket in trends)
+            foreach (var bucket in _lastTrends)
             {
                 foreach (var kvp in bucket.CategoryBreakdown)
                 {
-                    double val = CategoryBreakdownMetric == "Dollar Amount" ? kvp.Value.PositiveRevenue : kvp.Value.PositiveQuantity;
+                    double val = CategoryBreakdownMetric == "Dollar Amount" ? kvp.Value.Revenue : kvp.Value.Quantity;
                     totals.TryAdd(kvp.Key, 0);
                     totals[kvp.Key] += val;
                     overallTotal += val;
@@ -299,8 +359,8 @@ namespace SalesLedger.Core.ViewModels
             foreach (var kvp in totals.Where(x => x.Value > 0).OrderByDescending(x => x.Value))
             {
                 double pct = overallTotal > 0 ? (kvp.Value / overallTotal) * 100 : 0;
-                string valText = CategoryBreakdownMetric == "Dollar Amount" 
-                    ? kvp.Value.ToString("C0") 
+                string valText = CategoryBreakdownMetric == "Dollar Amount"
+                    ? kvp.Value.ToString("C0")
                     : $"{kvp.Value} units";
 
                 var color = CategoryColors[colorIndex % CategoryColors.Length];
@@ -321,12 +381,14 @@ namespace SalesLedger.Core.ViewModels
             DateTime start = DateTime.MinValue;
             DateTime end = DateTime.MaxValue;
 
+            bool currentPayPeriod = SelectedDateFilterType == AnalyticsService.CurrentPayPeriod;
+
             if (SelectedDateFilterType == "Custom" && CustomStartDate.HasValue && CustomEndDate.HasValue)
             {
                 start = CustomStartDate.Value.Date;
                 end = CustomEndDate.Value.Date.AddDays(1).AddMilliseconds(-1);
             }
-            else if (SelectedDateFilterType != "All Time")
+            else if (SelectedDateFilterType != "All Time" && !currentPayPeriod)
             {
                 var range = _mainVm.Analytics.GetDateRangeAndScale(SelectedDateFilterType);
                 start = range.Start;
@@ -335,7 +397,14 @@ namespace SalesLedger.Core.ViewModels
 
             // Fetch from LiteDB for display accuracy and direct edit hookups
             var query = _mainVm.LiteDb.Sales.Find(x => x.TransactionDate >= start && x.TransactionDate <= end);
-            
+
+            if (currentPayPeriod)
+            {
+                // Exactly what the next period close would include, whatever the dates
+                query = query.Where(x => x.Status == PayoutStatus.Pending ||
+                                         (x.Status == PayoutStatus.ReturnedBeforePayout && x.AssociatedReportId == null));
+            }
+
             if (HighValueSalesOnly)
             {
                 query = query.Where(x => x.SalePrice >= 1500m);
@@ -350,11 +419,12 @@ namespace SalesLedger.Core.ViewModels
             {
                 query = SelectedSaleTypeFilter switch
                 {
-                    "Standard (New)" => query.Where(x => x.RecordType == SaleType.Standard && x is StandardSale { IsUsedGear: false }),
-                    "Standard (Used)" => query.Where(x => x.RecordType == SaleType.Standard && x is StandardSale { IsUsedGear: true }),
-                    "eBay" => query.Where(x => x.RecordType == SaleType.Ebay),
-                    "Warranty" => query.Where(x => x.RecordType == SaleType.Warranty),
-                    "Return Offset" => query.Where(x => x.RecordType == SaleType.ReturnOffset),
+                    "Standard (New)" => query.Where(x => !x.IsReturn && x is StandardSale { IsUsedGear: false }),
+                    "Standard (Used)" => query.Where(x => !x.IsReturn && x is StandardSale { IsUsedGear: true }),
+                    "eBay" => query.Where(x => !x.IsReturn && x.RecordType == SaleType.Ebay),
+                    "Warranty" => query.Where(x => !x.IsReturn && x.RecordType == SaleType.Warranty),
+                    // Return lines, sales returned before payout, and legacy ReturnOffsetSale records
+                    "Returns" => query.Where(x => x.IsReturn || x.RecordType == SaleType.ReturnOffset || x.Status == PayoutStatus.ReturnedBeforePayout),
                     _ => query
                 };
             }
@@ -362,7 +432,7 @@ namespace SalesLedger.Core.ViewModels
             if (!string.IsNullOrWhiteSpace(SearchText))
             {
                 string search = SearchText.Trim();
-                query = query.Where(x => 
+                query = query.Where(x =>
                     x.InvoiceNumber.Contains(search, StringComparison.OrdinalIgnoreCase) ||
                     x.ProductName.Contains(search, StringComparison.OrdinalIgnoreCase) ||
                     x.Sku.Contains(search, StringComparison.OrdinalIgnoreCase)
@@ -377,6 +447,8 @@ namespace SalesLedger.Core.ViewModels
         }
 
         partial void OnSelectedTimeframeChanged(string value) { _ = value; LoadData(); }
+        partial void OnChartStartDateChanged(DateTime? value) { _ = value; if (IsCustomTimeframe) LoadData(); }
+        partial void OnChartEndDateChanged(DateTime? value) { _ = value; if (IsCustomTimeframe) LoadData(); }
         partial void OnSelectedMetricChanged(string value) { _ = value; LoadData(); }
         partial void OnCategoryBreakdownMetricChanged(string value) { _ = value; UpdateCategoryBreakdown(); }
         partial void OnHighValueSalesOnlyChanged(bool value) { _ = value; LoadSalesList(); }
@@ -406,152 +478,337 @@ namespace SalesLedger.Core.ViewModels
 
         public void OnSyncCompleted()
         {
-            Avalonia.Threading.Dispatcher.UIThread.Post(LoadData);
+            // The refresh runs later on the UI thread; by then the app may have shut down (databases closed)
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                if (!_mainVm.IsDisposed)
+                {
+                    LoadData();
+                }
+            });
         }
 
-        // Open Dialog
+        [RelayCommand]
+        private void DismissLedgerMessage() => LedgerMessage = string.Empty;
+
+        // ------------------------------------------------------------------
+        // Receipt dialog: add a new receipt, or open an existing one
+        // ------------------------------------------------------------------
+
+        private void ResetReceiptDialog()
+        {
+            DialogLines.Clear();
+            _removedItemIds.Clear();
+            _stagedReturns.Clear();
+            SetEditingLine(null);
+            _receiptDate = null;
+            _loadedInvoice = null;
+            _dateBeforeLoad = null;
+            _newItemsUseToday = null;
+            IsInvoiceLocked = false;
+            DialogErrorMessage = string.Empty;
+            ReceiptNotice = string.Empty;
+            IsConfirmVisible = false;
+            OnPropertyChanged(nameof(HasDialogSales));
+            RefreshProductSuggestions();
+        }
+
+        private void ClearProductFields()
+        {
+            _suppressSuggestionFill = true;
+            Sku = string.Empty;
+            ProductName = string.Empty;
+            SalePrice = 0m;
+            ManufacturerPrice = 0m;
+            SelectedProductSuggestion = null;
+            _suppressSuggestionFill = false;
+            SetEditingLine(null);
+        }
+
+        private void ResetNewProductDefaults(SaleType type)
+        {
+            ClearProductFields();
+            RecordType = type is SaleType.Warranty or SaleType.Ebay ? type : SaleType.Standard;
+            Category = Categories.FirstOrDefault() ?? string.Empty;
+            IsUsedGear = true;
+            WarrantyTypeName = WarrantyTypes.FirstOrDefault() ?? string.Empty;
+        }
+
         [RelayCommand]
         private void ShowAddSaleDialog()
         {
             DialogTitle = "Add New Transaction";
             IsEditing = false;
-            _editingSaleId = null;
+            ResetReceiptDialog();
 
             InvoiceNumber = string.Empty;
-            Sku = string.Empty;
-            ProductName = string.Empty;
-            Category = Categories.FirstOrDefault() ?? string.Empty;
-            SalePrice = 0m;
             TransactionDate = DateTime.Now;
-            RecordType = SaleType.Standard;
-            IsUsedGear = true;
-            WarrantyTypeName = WarrantyTypes.FirstOrDefault() ?? string.Empty;
-            ManufacturerPrice = 0m;
-
-            DialogSales.Clear();
-            OnPropertyChanged(nameof(HasDialogSales));
+            ResetNewProductDefaults(SaleType.Standard);
 
             IsSaleDialogVisible = true;
         }
 
+        /// <summary>
+        /// Opens a receipt from the ledger: every item goes in the list (pending ones editable, the rest read-only)
+        /// and the product fields start empty, ready to add another product.
+        /// </summary>
         [RelayCommand]
-        private void EditSale(SaleRecord? parameter)
+        private void OpenReceipt(SaleRecord? parameter)
         {
             var target = parameter ?? SelectedSale;
-            if (target == null || target.Status == PayoutStatus.ReturnedBeforePayout) return;
+            if (target == null || !target.CanOpenReceipt) return;
 
-            DialogTitle = "Edit Transaction";
+            var receipt = _mainVm.Receipts.LoadReceipt(target.InvoiceNumber);
+
             IsEditing = true;
-            _editingSaleId = target.Id;
+            ResetReceiptDialog();
 
-            InvoiceNumber = target.InvoiceNumber;
-            TransactionDate = target.TransactionDate;
-            RecordType = target.RecordType;
+            DialogTitle = $"Receipt {receipt.InvoiceNumber}";
+            InvoiceNumber = receipt.InvoiceNumber;
+            _receiptDate = receipt.ReceiptDate ?? target.TransactionDate;
+            TransactionDate = _receiptDate;
+            _loadedInvoice = receipt.InvoiceNumber;
 
-            DialogSales.Clear();
-            _originalEditingIds.Clear();
+            AddReceiptLines(receipt);
+            IsInvoiceLocked = receipt.ReadOnlyItems.Count > 0;
 
-            // Find all sales with the same InvoiceNumber
-            var receiptSales = _mainVm.LiteDb.Sales.Find(x => x.InvoiceNumber == target.InvoiceNumber).ToList();
+            ResetNewProductDefaults(target.RecordType);
 
-            foreach (var sale in receiptSales)
+            // The clicked product opens for editing (if it's still pending); the rest of the receipt is listed below
+            var clickedLine = DialogLines.FirstOrDefault(l => l.Sale.Id == target.Id && l.IsEditable);
+            if (clickedLine != null)
             {
-                _originalEditingIds.Add(sale.Id);
-                if (sale.Id == target.Id)
-                {
-                    // Load the clicked item directly into the input fields
-                    Sku = sale.Sku;
-                    ProductName = sale.ProductName;
-                    Category = sale.Category;
-                    SalePrice = sale.SalePrice;
-                    
-                    if (sale is StandardSale std)
-                    {
-                        IsUsedGear = std.IsUsedGear;
-                    }
-                    else if (sale is EbaySale ebay)
-                    {
-                        IsUsedGear = ebay.IsUsedGear;
-                    }
-                    else if (sale is WarrantySale war)
-                    {
-                        WarrantyTypeName = war.WarrantyTypeName;
-                        ManufacturerPrice = war.ManufacturerPrice;
-                    }
-                }
-                else
-                {
-                    // Put other items in the dialog sales list
-                    DialogSales.Add(sale);
-                }
+                SetEditingLine(clickedLine);
+                LoadItemIntoFields(clickedLine.Sale);
+                DialogLines.Remove(clickedLine);
+                OnPropertyChanged(nameof(HasDialogSales));
+            }
+
+            int count = receipt.EditableItems.Count + receipt.ReadOnlyItems.Count(s => !s.IsReturn);
+            ReceiptNotice = clickedLine != null
+                ? $"Editing \"{target.ProductName}\" ({count} item(s) on this receipt). Other items are listed below; use the add button to add another product."
+                : $"\"{target.ProductName}\" is {DescribeLocked(target)} and can't be edited ({count} item(s) on this receipt). You can return it or add another product below.";
+
+            IsSaleDialogVisible = true;
+        }
+
+        private static string DescribeLocked(SaleRecord sale) => sale.Status switch
+        {
+            PayoutStatus.Paid => "paid",
+            PayoutStatus.ReturnedBeforePayout => "returned",
+            _ => "locked"
+        };
+
+        /// <summary>Label of the add button: it saves the loaded item back to the list when one is being edited.</summary>
+        [ObservableProperty] public partial string AddItemButtonText { get; private set; } = "+ Add Product to Receipt";
+
+        private void SetEditingLine(ReceiptLineViewModel? line)
+        {
+            _editingLine = line;
+            AddItemButtonText = line == null ? "+ Add Product to Receipt" : "✓ Done Editing, Add Another";
+        }
+
+        private void AddReceiptLines(ReceiptSnapshot receipt)
+        {
+            var receiptDay = receipt.ReceiptDate?.Date;
+
+            // Existing editable items first, then anything new already in the list, then read-only items
+            int insertAt = 0;
+            foreach (var sale in receipt.EditableItems)
+            {
+                var line = new ReceiptLineViewModel(sale, isEditable: true, isSaved: true,
+                    followsReceiptDate: sale.TransactionDate.Date == receiptDay);
+                DialogLines.Insert(insertAt++, line);
+            }
+
+            foreach (var sale in receipt.ReadOnlyItems)
+            {
+                DialogLines.Add(new ReceiptLineViewModel(sale, isEditable: false, isSaved: true,
+                    followsReceiptDate: sale.TransactionDate.Date == receiptDay));
             }
 
             OnPropertyChanged(nameof(HasDialogSales));
+        }
 
-            IsSaleDialogVisible = true;
+        /// <summary>
+        /// When adding a new receipt, typing an invoice number that already exists pulls that receipt in so the
+        /// user can see what's already on it. Called when the invoice field loses focus, and before adding/saving.
+        /// Changing the number again drops the loaded items and checks the new number.
+        /// </summary>
+        /// <returns>True if an existing receipt was just loaded into the dialog.</returns>
+        public bool CheckInvoiceForExistingReceipt()
+        {
+            if (!IsSaleDialogVisible || IsEditing) return false;
+
+            var key = InvoiceNumber.Trim();
+            if (_loadedInvoice != null && string.Equals(_loadedInvoice, key, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            if (_loadedInvoice != null)
+            {
+                UnloadExistingReceipt();
+            }
+
+            if (key.Length == 0) return false;
+
+            var receipt = _mainVm.Receipts.LoadReceipt(key);
+            if (!receipt.Exists) return false;
+
+            _loadedInvoice = receipt.InvoiceNumber;
+            InvoiceNumber = receipt.InvoiceNumber; // use the stored spelling so the receipt isn't split
+            _dateBeforeLoad = TransactionDate;
+            _receiptDate = receipt.ReceiptDate;
+            TransactionDate = receipt.ReceiptDate;
+
+            AddReceiptLines(receipt);
+
+            int count = receipt.EditableItems.Count + receipt.ReadOnlyItems.Count(s => !s.IsReturn);
+            DialogTitle = $"Add to Existing Receipt {receipt.InvoiceNumber}";
+            ReceiptNotice = $"{receipt.InvoiceNumber} already exists (dated {receipt.ReceiptDate:MMM d, yyyy}) with {count} item(s), shown below. " +
+                            "Products you add will go on this receipt.";
+            return true;
+        }
+
+        private void UnloadExistingReceipt()
+        {
+            DialogTitle = "Add New Transaction";
+            foreach (var line in DialogLines.Where(l => l.IsSaved).ToList())
+            {
+                DialogLines.Remove(line);
+                _stagedReturns.Remove(line.Sale.Id);
+            }
+
+            if (_editingLine is { IsSaved: true })
+            {
+                ClearProductFields();
+            }
+
+            _removedItemIds.Clear();
+            TransactionDate = _dateBeforeLoad ?? DateTime.Now;
+            _receiptDate = null;
+            _loadedInvoice = null;
+            _dateBeforeLoad = null;
+            _newItemsUseToday = null;
+            ReceiptNotice = string.Empty;
+            OnPropertyChanged(nameof(HasDialogSales));
+        }
+
+        private void LoadItemIntoFields(SaleRecord item)
+        {
+            _suppressSuggestionFill = true;
+            RecordType = item.RecordType;
+            Sku = item.Sku;
+            ProductName = item.ProductName;
+            Category = item.Category;
+            SalePrice = item.SalePrice;
+
+            if (item is StandardSale std)
+            {
+                IsUsedGear = std.IsUsedGear;
+            }
+            else if (item is EbaySale ebay)
+            {
+                IsUsedGear = ebay.IsUsedGear;
+            }
+            else if (item is WarrantySale war)
+            {
+                WarrantyTypeName = war.WarrantyTypeName;
+                ManufacturerPrice = war.ManufacturerPrice;
+            }
+            _suppressSuggestionFill = false;
         }
 
         [RelayCommand]
         private void CloseSaleDialog()
         {
             IsSaleDialogVisible = false;
+            IsConfirmVisible = false;
         }
 
         [RelayCommand]
-        private void AddDialogItem()
+        private void AddDialogItem() => TryAddItem(after: null);
+
+        /// <summary>
+        /// Adds the product in the fields to the receipt, pausing for confirmation when needed:
+        /// 1) a used SKU that has already been sold, 2) which date a product added to an existing receipt should use.
+        /// <paramref name="after"/> runs once the item is added (e.g. to continue saving).
+        /// </summary>
+        private void TryAddItem(Action? after, bool skuConfirmed = false, bool? useToday = null)
         {
             if (string.IsNullOrWhiteSpace(ProductName))
             {
+                after?.Invoke();
                 return;
             }
 
-            SaleRecord item;
-            bool wasEditingExisting = false;
-            SaleRecord? existing = null;
+            CheckInvoiceForExistingReceipt();
 
-            if (_editingSaleId.HasValue)
+            if (!skuConfirmed && BuildSkuWarning() is { } warning)
             {
-                existing = _mainVm.LiteDb.Sales.FindById(_editingSaleId.Value);
-                wasEditingExisting = true;
+                ShowConfirm(
+                    title: warning.Title,
+                    message: warning.Message,
+                    primaryText: warning.IsResaleOfReturnedItem ? "Yes, Selling It Again" : "Add Anyway",
+                    primary: () => TryAddItem(after, skuConfirmed: true, useToday),
+                    cancelText: "Go Back");
+                return;
             }
 
-            if (existing != null && existing.RecordType == RecordType)
+            bool isNewItem = _editingLine == null;
+            if (isNewItem && useToday == null && _receiptDate != null)
             {
-                item = existing;
-            }
-            else
-            {
-                if (RecordType == SaleType.Standard)
+                var receiptDay = (TransactionDate ?? DateTime.Today).Date;
+                if (receiptDay != DateTime.Today)
                 {
-                    item = new StandardSale();
-                }
-                else if (RecordType == SaleType.Warranty)
-                {
-                    item = new WarrantySale();
-                }
-                else
-                {
-                    item = new EbaySale();
-                }
-
-                if (wasEditingExisting)
-                {
-                    item.Id = _editingSaleId!.Value;
-                    if (existing != null)
+                    if (_newItemsUseToday is { } remembered)
                     {
-                        item.Status = existing.Status;
-                        item.AssociatedReportId = existing.AssociatedReportId;
+                        useToday = remembered;
                     }
                     else
                     {
-                        item.Status = PayoutStatus.Pending;
+                        ShowConfirm(
+                            title: "Which Date Should This Product Use?",
+                            message: $"This receipt is dated {receiptDay:MMMM d, yyyy}. Products added to an existing receipt usually match its date, " +
+                                     $"but you can date this one today ({DateTime.Today:MMMM d, yyyy}) instead. " +
+                                     "Your choice applies to other products you add before saving.",
+                            primaryText: $"Receipt Date ({receiptDay:MMM d})",
+                            primary: () => { _newItemsUseToday = false; TryAddItem(after, skuConfirmed: true, useToday: false); },
+                            secondaryText: $"Today ({DateTime.Today:MMM d})",
+                            secondary: () => { _newItemsUseToday = true; TryAddItem(after, skuConfirmed: true, useToday: true); },
+                            cancelText: "Go Back");
+                        return;
                     }
                 }
-                else
+            }
+
+            AddItemCore(useToday == true);
+            after?.Invoke();
+        }
+
+        private void AddItemCore(bool useToday)
+        {
+            var previous = _editingLine?.Sale;
+
+            SaleRecord item;
+            if (previous != null && previous.RecordType == RecordType)
+            {
+                item = previous;
+            }
+            else
+            {
+                item = RecordType switch
                 {
-                    item.Id = Guid.NewGuid();
-                    item.Status = PayoutStatus.Pending;
-                }
+                    SaleType.Warranty => new WarrantySale(),
+                    SaleType.Ebay => new EbaySale(),
+                    _ => new StandardSale()
+                };
+
+                // Changing the type of an existing item keeps its identity (and so its database record)
+                item.Id = previous?.Id ?? Guid.NewGuid();
+                item.Status = PayoutStatus.Pending;
+                item.TransactionDate = previous?.TransactionDate ?? DateTime.Now;
             }
 
             // Update item details from input fields
@@ -560,7 +817,6 @@ namespace SalesLedger.Core.ViewModels
             item.ProductName = ProductName.Trim();
             item.Category = (RecordType == SaleType.Warranty) ? "Warranty" : Category;
             item.SalePrice = SalePrice;
-            item.TransactionDate = TransactionDate ?? DateTime.Now;
 
             if (item is StandardSale std)
             {
@@ -576,146 +832,374 @@ namespace SalesLedger.Core.ViewModels
                 war.ManufacturerPrice = ManufacturerPrice;
             }
 
-            var settings = _mainVm.LiteDb.GetUserSettings();
-            item.CalculatedCommission = _mainVm.CommissionProc.CalculateLineItem(item, settings.ActiveRules ?? []);
+            // Dates: an edited item keeps its date behaviour; a new one follows the receipt unless "today" was chosen
+            // (Saved items keep their stored date here; whether they move with the receipt date is decided on save.)
+            bool follows = _editingLine?.FollowsReceiptDate ?? !useToday;
+            if (follows && _editingLine is not { IsSaved: true })
+            {
+                item.TransactionDate = OnDay(item.TransactionDate, TransactionDate ?? DateTime.Now);
+            }
+            else if (_editingLine == null)
+            {
+                item.TransactionDate = DateTime.Now;
+            }
 
-            DialogSales.Add(item);
+            var settings = _mainVm.LiteDb.GetUserSettings();
+            _mainVm.CommissionProc.ApplyCommission(item, settings.ActiveRules ?? []);
+
+            var line = new ReceiptLineViewModel(item, isEditable: true, isSaved: _editingLine?.IsSaved ?? false, followsReceiptDate: follows);
+            if (_stagedReturns.TryGetValue(item.Id, out var staged))
+            {
+                line.StagedReturnText = DescribeStagedReturn(staged);
+            }
+
+            // Editable items are listed before the read-only ones
+            int insertAt = DialogLines.TakeWhile(l => l.IsEditable).Count();
+            DialogLines.Insert(insertAt, line);
             OnPropertyChanged(nameof(HasDialogSales));
 
-            // Clear item specific input fields and reset _editingSaleId
-            Sku = string.Empty;
-            ProductName = string.Empty;
-            SalePrice = 0m;
-            ManufacturerPrice = 0m;
-            _editingSaleId = null;
+            ClearProductFields();
         }
 
-        [RelayCommand]
-        private void RemoveDialogItem(SaleRecord item)
+        /// <summary>The date part of <paramref name="day"/> with the time of day of <paramref name="original"/>.</summary>
+        private static DateTime OnDay(DateTime original, DateTime day) => day.Date + original.TimeOfDay;
+
+        // The SKU the user has already confirmed for the product in the fields (so they're asked once, not twice)
+        private string? _confirmedSku;
+
+        /// <summary>
+        /// The duplicate-SKU notice for the used/eBay item in the fields, or null if there's nothing to say or it was
+        /// already confirmed. An existing item whose SKU wasn't changed isn't re-checked.
+        /// </summary>
+        private SkuWarning? BuildSkuWarning()
         {
-            if (item != null)
+            if (!SkuCheckService.ShouldCheck(RecordType, IsUsedGear)) return null;
+
+            var sku = Sku.Trim();
+            if (sku.Length == 0) return null;
+            if (string.Equals(_confirmedSku, sku, StringComparison.OrdinalIgnoreCase)) return null;
+
+            if (_editingLine is { IsSaved: true } && string.Equals(_editingLine.Sale.Sku.Trim(), sku, StringComparison.OrdinalIgnoreCase))
             {
-                DialogSales.Remove(item);
-                OnPropertyChanged(nameof(HasDialogSales));
+                return null;
+            }
+
+            var selfId = _editingLine?.Sale.Id;
+            var matches = _mainVm.SkuCheck
+                .FindPriorSales(sku, selfId is { } id ? [id] : null)
+                .Where(m => !_removedItemIds.Contains(m.Sale.Id))
+                .ToList();
+
+            var unsaved = DialogLines
+                .Where(l => !l.IsSaved && l.Sale.Id != selfId && string.Equals(l.Sale.Sku.Trim(), sku, StringComparison.OrdinalIgnoreCase))
+                .Select(l => $"Already on this receipt (not yet saved) · {l.Sale.ProductName} · {l.Sale.SalePrice:C}")
+                .ToList();
+
+            return SkuCheckService.BuildWarning(sku, matches, unsaved);
+        }
+
+        /// <summary>
+        /// Called when the SKU field loses focus: warns straight away about a duplicate used/eBay SKU,
+        /// rather than waiting until the product is added.
+        /// </summary>
+        public void CheckSkuOnLeave()
+        {
+            if (!IsSaleDialogVisible || IsConfirmVisible) return;
+            if (BuildSkuWarning() is not { } warning) return;
+
+            var sku = Sku.Trim();
+            ShowConfirm(
+                title: warning.Title,
+                message: warning.Message,
+                primaryText: warning.IsResaleOfReturnedItem ? "Yes, Selling It Again" : "Keep This SKU",
+                primary: () => _confirmedSku = sku,
+                cancelText: "Change SKU");
+        }
+
+        partial void OnSkuChanged(string value)
+        {
+            if (!string.Equals(_confirmedSku, value.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                _confirmedSku = null;
             }
         }
 
         [RelayCommand]
-        private void EditDialogItem(SaleRecord item)
+        private void RemoveDialogItem(ReceiptLineViewModel? line)
         {
-            if (item == null) return;
+            if (line == null || !line.IsEditable) return;
+
+            DialogLines.Remove(line);
+            if (line.IsSaved)
+            {
+                _removedItemIds.Add(line.Sale.Id);
+            }
+            _stagedReturns.Remove(line.Sale.Id);
+            OnPropertyChanged(nameof(HasDialogSales));
+        }
+
+        [RelayCommand]
+        private void EditDialogItem(ReceiptLineViewModel? line)
+        {
+            if (line == null || !line.IsEditable) return;
 
             // Protection: if the user started typing a new product, add it to the list first
-            if (!string.IsNullOrWhiteSpace(ProductName))
+            TryAddItem(after: () =>
             {
-                AddDialogItem();
-            }
-
-            // Now load the clicked item into the fields
-            _editingSaleId = item.Id;
-            Sku = item.Sku;
-            ProductName = item.ProductName;
-            Category = item.Category;
-            SalePrice = item.SalePrice;
-            
-            if (item is StandardSale std)
-            {
-                IsUsedGear = std.IsUsedGear;
-            }
-            else if (item is EbaySale ebay)
-            {
-                IsUsedGear = ebay.IsUsedGear;
-            }
-            else if (item is WarrantySale war)
-            {
-                WarrantyTypeName = war.WarrantyTypeName;
-                ManufacturerPrice = war.ManufacturerPrice;
-            }
-
-            DialogSales.Remove(item);
-            OnPropertyChanged(nameof(HasDialogSales));
+                if (!DialogLines.Contains(line)) return;
+                SetEditingLine(line);
+                LoadItemIntoFields(line.Sale);
+                DialogLines.Remove(line);
+                OnPropertyChanged(nameof(HasDialogSales));
+            });
         }
 
         [RelayCommand]
-        private void ReturnDialogItem(SaleRecord item)
+        private void ReturnDialogItem(ReceiptLineViewModel? line)
         {
-            if (item != null)
+            if (line == null || !line.CanStageReturn) return;
+
+            ReturnDialog.OpenForReturn(line.Sale, (amount, date) =>
             {
-                item.Status = PayoutStatus.ReturnedBeforePayout;
-                item.CalculatedCommission = 0m;
-                OnPropertyChanged(nameof(HasDialogSales));
-            }
+                var staged = new StagedReturn(line.Sale.Id, amount, date);
+                _stagedReturns[line.Sale.Id] = staged;
+                line.StagedReturnText = DescribeStagedReturn(staged);
+                return null;
+            }, isStaged: true);
         }
+
+        [RelayCommand]
+        private void UndoStagedReturn(ReceiptLineViewModel? line)
+        {
+            if (line == null) return;
+            _stagedReturns.Remove(line.Sale.Id);
+            line.StagedReturnText = string.Empty;
+        }
+
+        private static string DescribeStagedReturn(StagedReturn staged) =>
+            $"Return of {staged.RefundAmount:C} will be applied on save";
 
         [RelayCommand]
         private void SaveSale()
         {
+            DialogErrorMessage = string.Empty;
+
             if (string.IsNullOrWhiteSpace(InvoiceNumber))
             {
+                DialogErrorMessage = "Enter an invoice number / order code.";
                 return;
             }
 
-            // Auto-add current input details if they entered product details
-            if (!string.IsNullOrWhiteSpace(ProductName))
+            // If the invoice turns out to be an existing receipt, show it before saving anything onto it
+            if (CheckInvoiceForExistingReceipt())
             {
-                AddDialogItem();
-            }
-
-            if (DialogSales.Count == 0)
-            {
+                DialogErrorMessage = "This receipt already exists. Its items are now shown; review them, then click Save Entry again.";
                 return;
             }
 
-            var settings = _mainVm.LiteDb.GetUserSettings();
-            var currentIds = new HashSet<Guid>();
+            // Auto-add current input details if they entered product details (may pause for a confirmation)
+            TryAddItem(after: SaveReceiptCore);
+        }
 
-            foreach (var sale in DialogSales)
+        /// <param name="moveExistingItems">
+        /// Whether items already saved on the receipt follow a changed receipt date. Null = not decided yet: if the date
+        /// was changed, the user is asked first (existing items never move silently).
+        /// </param>
+        private void SaveReceiptCore() => SaveReceiptCore(moveExistingItems: null);
+
+        private void SaveReceiptCore(bool? moveExistingItems)
+        {
+            var editableLines = DialogLines.Where(l => l.IsEditable).ToList();
+            if (editableLines.Count == 0 && _stagedReturns.Count == 0 && _removedItemIds.Count == 0)
             {
-                sale.InvoiceNumber = InvoiceNumber.Trim();
-                sale.TransactionDate = TransactionDate ?? DateTime.Now;
-                sale.CalculatedCommission = _mainVm.CommissionProc.CalculateLineItem(sale, settings.ActiveRules ?? []);
-
-                var exists = _mainVm.LiteDb.Sales.FindById(sale.Id);
-                if (exists != null)
-                {
-                    _mainVm.LiteDb.Sales.Update(sale);
-                }
-                else
-                {
-                    _mainVm.LiteDb.Sales.Insert(sale);
-                }
-                _mainVm.Sync.QueueUpsert(sale);
-                currentIds.Add(sale.Id);
+                DialogErrorMessage = "Add at least one product to the receipt.";
+                return;
             }
 
-            // Delete any items that were originally on the receipt but are no longer present
-            if (IsEditing)
+            var receiptDay = TransactionDate ?? DateTime.Now;
+
+            // Saved items whose date would change because the receipt date field was changed
+            var savedItemsToMove = editableLines
+                .Where(l => l.IsSaved && l.FollowsReceiptDate && l.Sale.TransactionDate.Date != receiptDay.Date)
+                .ToList();
+
+            if (savedItemsToMove.Count > 0 && moveExistingItems == null)
             {
-                foreach (var originalId in _originalEditingIds)
-                {
-                    if (!currentIds.Contains(originalId))
-                    {
-                        _mainVm.LiteDb.Sales.Delete(originalId);
-                        _mainVm.Sync.QueueDelete(originalId);
-                    }
-                }
+                var oldDay = savedItemsToMove[0].Sale.TransactionDate;
+                ShowConfirm(
+                    title: "Change the Date of Existing Items?",
+                    message: $"{savedItemsToMove.Count} item(s) already saved on {InvoiceNumber.Trim()} are dated {oldDay:MMMM d, yyyy}, " +
+                             $"but the receipt date is now {receiptDay:MMMM d, yyyy}.\n\n" +
+                             "Keep their original date, or move them to the new date? Products you're adding now use the new date either way.",
+                    primaryText: $"Keep {oldDay:MMM d}",
+                    primary: () => SaveReceiptCore(moveExistingItems: false),
+                    secondaryText: $"Move to {receiptDay:MMM d}",
+                    secondary: () => SaveReceiptCore(moveExistingItems: true),
+                    cancelText: "Go Back");
+                return;
+            }
+
+            // Items that follow the receipt date take the date field's day (keeping their time of day);
+            // already-saved items only move if the user said so
+            foreach (var line in editableLines.Where(l => l.FollowsReceiptDate && (!l.IsSaved || moveExistingItems == true)))
+            {
+                line.Sale.TransactionDate = OnDay(line.Sale.TransactionDate, receiptDay);
+            }
+
+            try
+            {
+                _mainVm.Receipts.SaveReceipt(
+                    InvoiceNumber.Trim(),
+                    editableLines.Select(l => l.Sale).ToList(),
+                    _removedItemIds,
+                    _stagedReturns.Values.ToList());
+            }
+            catch (Exception ex)
+            {
+                DialogErrorMessage = ex.Message;
+                return;
             }
 
             IsSaleDialogVisible = false;
             LoadData();
         }
 
+        // ------------------------------------------------------------------
+        // Product name autofill
+        // ------------------------------------------------------------------
+
+        private void RefreshProductSuggestions()
+        {
+            _productSuggestions = _mainVm.Receipts.GetProductSuggestions();
+            UpdateProductNameSuggestions();
+        }
+
+        /// <summary>Warranty plans and gear are suggested separately, matching the sale type being entered.</summary>
+        private void UpdateProductNameSuggestions()
+        {
+            bool warranty = RecordType == SaleType.Warranty;
+            ProductNameSuggestions = _productSuggestions
+                .Where(s => s.IsWarranty == warranty)
+                .Select(s => s.Name)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        partial void OnRecordTypeChanged(SaleType value)
+        {
+            _ = value;
+            UpdateProductNameSuggestions();
+        }
+
+        /// <summary>Picking a suggested name fills in the category (or warranty brand) it was last sold under.</summary>
+        partial void OnSelectedProductSuggestionChanged(string? value)
+        {
+            if (_suppressSuggestionFill || string.IsNullOrEmpty(value)) return;
+
+            bool warranty = RecordType == SaleType.Warranty;
+            var suggestion = _productSuggestions.FirstOrDefault(s =>
+                s.IsWarranty == warranty && string.Equals(s.Name, value, StringComparison.OrdinalIgnoreCase));
+            if (suggestion == null) return;
+
+            if (warranty)
+            {
+                if (WarrantyTypes.Contains(suggestion.WarrantyTypeName)) WarrantyTypeName = suggestion.WarrantyTypeName;
+            }
+            else if (Categories.Contains(suggestion.Category))
+            {
+                Category = suggestion.Category;
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // Confirmation popup
+        // ------------------------------------------------------------------
+
+        private void ShowConfirm(string title, string message, string primaryText, Action primary,
+            string cancelText = "Cancel", string secondaryText = "", Action? secondary = null)
+        {
+            ConfirmTitle = title;
+            ConfirmMessage = message;
+            ConfirmPrimaryText = primaryText;
+            ConfirmSecondaryText = secondaryText;
+            ConfirmCancelText = cancelText;
+            _confirmPrimaryAction = primary;
+            _confirmSecondaryAction = secondary;
+            IsConfirmVisible = true;
+        }
+
+        [RelayCommand]
+        private void ConfirmPrimary() => CompleteConfirm(_confirmPrimaryAction);
+
+        [RelayCommand]
+        private void ConfirmSecondary() => CompleteConfirm(_confirmSecondaryAction);
+
+        [RelayCommand]
+        private void ConfirmCancel() => CompleteConfirm(null);
+
+        private void CompleteConfirm(Action? action)
+        {
+            IsConfirmVisible = false;
+            _confirmPrimaryAction = null;
+            _confirmSecondaryAction = null;
+            action?.Invoke();
+        }
+
+        // ------------------------------------------------------------------
+        // Grid actions: returns, deletes, restores
+        // ------------------------------------------------------------------
+
         [RelayCommand]
         private void ProcessReturn(SaleRecord? parameter)
         {
             var target = parameter ?? SelectedSale;
-            if (target == null || target.Status == PayoutStatus.ReturnedBeforePayout) return;
+            if (target == null || !target.CanProcessReturn) return;
 
-            // Execute transactional returns pipeline (pre-payout vs post-payout logic)
-            _mainVm.PayoutService.ProcessReturn(target);
+            ReturnDialog.OpenForReturn(target, (amount, date) =>
+            {
+                try
+                {
+                    _mainVm.PayoutService.ProcessReturn(target, amount, date);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return ex.Message;
+                }
 
-            // Refresh views
-            LoadData();
+                LoadData();
+                return null;
+            });
+        }
+
+        /// <summary>Changes the refund amount or date of a pending return line (through the return dialog).</summary>
+        [RelayCommand]
+        private void EditReturnLine(SaleRecord? parameter)
+        {
+            var returnLine = parameter ?? SelectedSale;
+            if (returnLine == null || !returnLine.CanEditReturnLine) return;
+            if (returnLine.OriginalSaleId is not { } originalId) return;
+
+            var original = _mainVm.LiteDb.Sales.FindById(originalId);
+            if (original == null)
+            {
+                LedgerMessage = "The original sale for this return no longer exists, so the return can't be edited.";
+                return;
+            }
+
+            ReturnDialog.OpenForEditLine(returnLine, original, (amount, date) =>
+            {
+                try
+                {
+                    _mainVm.PayoutService.UpdateReturnLine(returnLine.Id, amount, date);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return ex.Message;
+                }
+
+                LoadData();
+                return null;
+            });
         }
 
         [RelayCommand]
@@ -724,67 +1208,17 @@ namespace SalesLedger.Core.ViewModels
             var target = parameter ?? SelectedSale;
             if (target == null) return;
 
-            // Delete from LiteDB
-            _mainVm.LiteDb.Sales.Delete(target.Id);
-
-            // Queue deletion in SyncPipeline for DuckDB
-            _mainVm.Sync.QueueDelete(target.Id);
-
-            // Refresh views
-            LoadData();
-        }
-
-        // Close Period dialogs
-        [RelayCommand]
-        private void ShowPeriodCloseDialog()
-        {
-            PeriodReportName = $"{DateTime.Now:MMMM yyyy} Submission";
-            IsPeriodCloseVisible = true;
-        }
-
-        [RelayCommand]
-        private void ClosePeriodCloseDialog()
-        {
-            IsPeriodCloseVisible = false;
-        }
-
-        [RelayCommand]
-        private void ExecutePeriodClose()
-        {
-            if (string.IsNullOrWhiteSpace(PeriodReportName)) return;
-
-            // Freeze cycle
-            var report = _mainVm.PayoutService.CloseCurrentPayPeriod(PeriodReportName.Trim());
-
-            // Build print-ready PDF statement
-            var settings = _mainVm.LiteDb.GetUserSettings();
-            var salesInReport = _mainVm.LiteDb.Sales.Find(x => x.AssociatedReportId == report.Id).ToList();
-
-            var downloadsPath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                "Downloads",
-                $"CommissionReport_{report.ReportName.Replace(" ", "_")}.pdf"
-            );
-
-            _mainVm.ReportGen.GeneratePdfReport(report, salesInReport, settings, downloadsPath);
-
             try
             {
-                var psi = new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = downloadsPath,
-                    UseShellExecute = true
-                };
-                System.Diagnostics.Process.Start(psi);
+                // Also removes the sale's return lines, or re-balances siblings when deleting a return line
+                _mainVm.PayoutService.DeleteSale(target.Id);
             }
-            catch (Exception)
+            catch (InvalidOperationException ex)
             {
-                // Ignore launch failures (e.g. headless environment or no pdf viewer)
+                LedgerMessage = ex.Message;
+                return;
             }
 
-            IsPeriodCloseVisible = false;
-            
-            // Refresh UI
             LoadData();
         }
 
@@ -815,7 +1249,7 @@ namespace SalesLedger.Core.ViewModels
 
             // Recalculate commission based on current rules
             var settings = _mainVm.LiteDb.GetUserSettings();
-            SelectedSaleToRestore.CalculatedCommission = _mainVm.CommissionProc.CalculateLineItem(SelectedSaleToRestore, settings.ActiveRules ?? []);
+            _mainVm.CommissionProc.ApplyCommission(SelectedSaleToRestore, settings.ActiveRules ?? []);
 
             // Save to operational ledger and sync
             _mainVm.LiteDb.Sales.Update(SelectedSaleToRestore);
@@ -828,290 +1262,9 @@ namespace SalesLedger.Core.ViewModels
             LoadData();
         }
 
+        // CSV Import
         [RelayCommand]
-        private void PreviewPeriodReport()
-        {
-            // Gather all active pending and returned-before-payout sales (AssociatedReportId is null)
-            var pendingSales = _mainVm.LiteDb.Sales.Find(x => x.Status == PayoutStatus.Pending).ToList();
-            var returnedBeforePayoutSales = _mainVm.LiteDb.Sales.Find(x => x.Status == PayoutStatus.ReturnedBeforePayout && x.AssociatedReportId == null).ToList();
-
-            var allPeriodSales = pendingSales.Concat(returnedBeforePayoutSales).ToList();
-
-            // Create temporary payout report metadata
-            var tempReport = new PayoutReport
-            {
-                Id = Guid.Empty,
-                ReportGeneratedTimestamp = DateTime.UtcNow,
-                ReportName = "Preview (Open Period)",
-                TotalCommissionCalculated = pendingSales.Sum(s => s.CalculatedCommission),
-                LockedSaleIds = allPeriodSales.Select(s => s.Id).ToList()
-            };
-
-            var settings = _mainVm.LiteDb.GetUserSettings();
-            var downloadsPath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                "Downloads",
-                "CommissionReport_Preview.pdf"
-            );
-
-            _mainVm.ReportGen.GeneratePdfReport(tempReport, allPeriodSales, settings, downloadsPath);
-
-            try
-            {
-                var psi = new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = downloadsPath,
-                    UseShellExecute = true
-                };
-                System.Diagnostics.Process.Start(psi);
-            }
-            catch (Exception)
-            {
-                // Ignore launch failures
-            }
-        }
-
-        // CSV Import Wizard Commands
-        [RelayCommand]
-        private void ShowImportDialog()
-        {
-            CsvFilePath = string.Empty;
-            CsvHeaders.Clear();
-            ImportAsType = "Standard";
-            
-            SelectedDateHeader = string.Empty;
-            SelectedInvoiceHeader = string.Empty;
-            SelectedSkuHeader = string.Empty;
-            SelectedProductNameHeader = string.Empty;
-            SelectedCategoryHeader = string.Empty;
-            SelectedPriceHeader = string.Empty;
-            SelectedIsUsedHeader = string.Empty;
-            SelectedWarrantyTypeHeader = string.Empty;
-            SelectedWholesalePriceHeader = string.Empty;
-            
-            DefaultCategory = Categories.FirstOrDefault() ?? "Lens";
-            DefaultWarrantyType = WarrantyTypes.FirstOrDefault() ?? "Sony";
-            AllStandardAreUsed = true;
-
-            IsImportDialogVisible = true;
-        }
-
-        [RelayCommand]
-        private void CloseImportDialog()
-        {
-            IsImportDialogVisible = false;
-        }
-
-        [RelayCommand]
-        private async Task BrowseCsvFile()
-        {
-            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime { MainWindow: not null } desktop)
-            {
-                var csvType = new FilePickerFileType("CSV Files")
-                {
-                    Patterns = [ "*.csv" ],
-                    MimeTypes = [ "text/csv", "text/plain" ]
-                };
-
-                var files = await desktop.MainWindow.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-                {
-                    Title = "Select Spiff Sheet CSV File",
-                    AllowMultiple = false,
-                    FileTypeFilter = [ csvType ]
-                });
-
-                if (files is { Count: > 0 })
-                {
-                    CsvFilePath = files[0].Path.LocalPath;
-                    ParseCsvHeaders();
-                }
-            }
-        }
-
-        private void ParseCsvHeaders()
-        {
-            if (string.IsNullOrEmpty(CsvFilePath)) return;
-
-            try
-            {
-                var rows = CsvHelper.ParseCsv(CsvFilePath);
-                if (rows.Count > 0)
-                {
-                    var headers = rows[0];
-                    CsvHeaders.Clear();
-                    CsvHeaders.Add("[None]");
-                    foreach (var h in headers)
-                    {
-                        CsvHeaders.Add(h);
-                    }
-
-                    // Auto-map headers
-                    SelectedDateHeader = AutoMatchHeader(headers, "date", "trans");
-                    SelectedInvoiceHeader = AutoMatchHeader(headers, "receipt", "invoice", "number");
-                    SelectedSkuHeader = AutoMatchHeader(headers, "sku", "product sku", "item");
-                    SelectedProductNameHeader = AutoMatchHeader(headers, "product name", "name", "description");
-                    SelectedCategoryHeader = AutoMatchHeader(headers, "category", "product type", "type");
-                    SelectedPriceHeader = AutoMatchHeader(headers, "price", "sale price", "product price");
-                    SelectedIsUsedHeader = AutoMatchHeader(headers, "used", "is used", "gear");
-                    SelectedWarrantyTypeHeader = AutoMatchHeader(headers, "warranty type", "plan");
-                    SelectedWholesalePriceHeader = AutoMatchHeader(headers, "wholesale", "canon unit", "cost");
-                }
-            }
-            catch (Exception)
-            {
-                // fail silently
-            }
-        }
-
-        private string AutoMatchHeader(string[] headers, params string[] keywords)
-        {
-            foreach (var h in headers)
-            {
-                string hl = h.ToLowerInvariant();
-                foreach (var kw in keywords)
-                {
-                    if (hl.Contains(kw)) return h;
-                }
-            }
-            return "[None]";
-        }
-
-        [RelayCommand]
-        private void ExecuteCsvImport()
-        {
-            if (string.IsNullOrEmpty(CsvFilePath)) return;
-
-            try
-            {
-                var rows = CsvHelper.ParseCsv(CsvFilePath);
-                if (rows.Count <= 1) return;
-
-                var headers = rows[0].ToList();
-                int dateIdx = headers.IndexOf(SelectedDateHeader);
-                int invIdx = headers.IndexOf(SelectedInvoiceHeader);
-                int skuIdx = headers.IndexOf(SelectedSkuHeader);
-                int nameIdx = headers.IndexOf(SelectedProductNameHeader);
-                int catIdx = headers.IndexOf(SelectedCategoryHeader);
-                int priceIdx = headers.IndexOf(SelectedPriceHeader);
-
-                int usedIdx = headers.IndexOf(SelectedIsUsedHeader);
-                int warTypeIdx = headers.IndexOf(SelectedWarrantyTypeHeader);
-                int wholesaleIdx = headers.IndexOf(SelectedWholesalePriceHeader);
-
-                var settings = _mainVm.LiteDb.GetUserSettings();
-
-                for (int i = 1; i < rows.Count; i++)
-                {
-                    var row = rows[i];
-                    
-                    string GetVal(int idx) => (idx >= 0 && idx < row.Length) ? row[idx] : string.Empty;
-
-                    string dateStr = GetVal(dateIdx);
-                    string invStr = GetVal(invIdx);
-                    string skuStr = GetVal(skuIdx);
-                    string nameStr = GetVal(nameIdx);
-                    string catStr = GetVal(catIdx);
-                    string priceStr = GetVal(priceIdx);
-
-                    if (string.IsNullOrWhiteSpace(skuStr) && string.IsNullOrWhiteSpace(nameStr))
-                        continue;
-                    if (dateStr.ToLowerInvariant().Contains("total") || skuStr.ToLowerInvariant().Contains("total") || nameStr.ToLowerInvariant().Contains("total"))
-                        continue;
-
-                    if (!DateTime.TryParse(dateStr, out DateTime txDate))
-                    {
-                        txDate = DateTime.Now;
-                    }
-
-                    priceStr = priceStr.Replace("$", "").Replace(",", "").Trim();
-                    if (!decimal.TryParse(priceStr, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out decimal price))
-                    {
-                        price = 0m;
-                    }
-
-                    string category = "Warranty";
-                    if (ImportAsType == "Standard" || ImportAsType == "Ebay")
-                    {
-                        category = !string.IsNullOrEmpty(catStr) ? catStr : DefaultCategory;
-                        var matchingCategory = (settings.ProductCategories ?? []).FirstOrDefault(c => c.Name.Equals(category, StringComparison.OrdinalIgnoreCase));
-                        category = matchingCategory == null ? DefaultCategory : matchingCategory.Name;
-                    }
-
-                    SaleRecord record;
-                    if (ImportAsType == "Standard")
-                    {
-                        var std = new StandardSale();
-                        bool isUsed = AllStandardAreUsed;
-                        if (usedIdx >= 0 && usedIdx < row.Length)
-                        {
-                            string uVal = row[usedIdx].ToLowerInvariant();
-                            if (uVal.Contains("used") || uVal == "yes" || uVal == "true" || uVal == "1")
-                            {
-                                isUsed = true;
-                            }
-                        }
-                        std.IsUsedGear = isUsed;
-                        record = std;
-                    }
-                    else if (ImportAsType == "Ebay")
-                    {
-                        var ebay = new EbaySale();
-                        bool isUsed = AllStandardAreUsed;
-                        if (usedIdx >= 0 && usedIdx < row.Length)
-                        {
-                            string uVal = row[usedIdx].ToLowerInvariant();
-                            if (uVal.Contains("used") || uVal == "yes" || uVal == "true" || uVal == "1")
-                            {
-                                isUsed = true;
-                            }
-                        }
-                        ebay.IsUsedGear = isUsed;
-                        record = ebay;
-                    }
-                    else
-                    {
-                        var war = new WarrantySale();
-                        string warType = GetVal(warTypeIdx);
-                        if (string.IsNullOrEmpty(warType))
-                        {
-                            warType = DefaultWarrantyType;
-                        }
-                        
-                        string wholesaleStr = GetVal(wholesaleIdx).Replace("$", "").Replace(",", "").Trim();
-                        if (!decimal.TryParse(wholesaleStr, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out decimal wholesale))
-                        {
-                            wholesale = 0m;
-                        }
-
-                        var matchingWar = (settings.WarrantyTypes ?? []).FirstOrDefault(w => w.Name.Equals(warType, StringComparison.OrdinalIgnoreCase));
-                        war.WarrantyTypeName = matchingWar == null ? DefaultWarrantyType : matchingWar.Name;
-                        
-                        war.ManufacturerPrice = wholesale;
-                        record = war;
-                    }
-
-                    record.InvoiceNumber = !string.IsNullOrEmpty(invStr) ? invStr : $"CSV-{DateTime.Now.Ticks}";
-                    record.Sku = skuStr;
-                    record.ProductName = nameStr;
-                    record.Category = category;
-                    record.SalePrice = price;
-                    record.TransactionDate = txDate;
-                    record.Status = PayoutStatus.Pending;
-
-                    record.CalculatedCommission = _mainVm.CommissionProc.CalculateLineItem(record, settings.ActiveRules ?? []);
-
-                    _mainVm.LiteDb.Sales.Insert(record);
-                    _mainVm.Sync.QueueUpsert(record);
-                }
-
-                IsImportDialogVisible = false;
-                LoadData();
-            }
-            catch (Exception)
-            {
-                // fail silently
-            }
-        }
+        private void ShowImportDialog() => Import.Open();
     }
 
     public partial class CategoryBreakdownItem : ObservableObject

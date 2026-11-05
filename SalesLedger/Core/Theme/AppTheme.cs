@@ -38,6 +38,19 @@ namespace SalesLedger.Core.Theme
         public const string AccentPurple = "#705E78";   // Brand-matching Slate Plum (complements CS-Blue/CS-Brown)
         public const string AccentPurpleHover = "#594960";// Darker Slate Plum hover
 
+        // Header Navigation: each page has its own accent, used to fill its tab when active and tint it on hover.
+        // Text colors are chosen per tab for contrast (white on the light green is hard to read, so it uses dark text).
+        // Yellow is deliberately not used: it means "attention" elsewhere (warnings, commission figures).
+        public const string NavDashboard = AccentBlue;              // Dashboard: CS-Blue
+        public const string NavDashboardHover = AccentBlueHover;
+        public const string NavDashboardText = "#FFFFFF";
+        public const string NavReports = AccentGreen;               // Payout Reports: CS-Green (money out; matches Finalize)
+        public const string NavReportsHover = AccentGreenHover;
+        public const string NavReportsText = BgApp;
+        public const string NavSettings = AccentPurple;             // Settings: Slate Plum (calm, administrative)
+        public const string NavSettingsHover = "#82708B";           // Slate Plum, one step lighter
+        public const string NavSettingsText = "#FFFFFF";
+
         // Print Theme Colors (QuestPDF Payout Reports)
         // High-contrast colors configured for printer efficiency and readability
         public const string PrintAccentPrimary = "#4F759B";  // CS-Blue (primary headers)

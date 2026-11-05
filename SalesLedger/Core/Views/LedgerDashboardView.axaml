@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:SalesLedger.Core.ViewModels"
              xmlns:models="using:SalesLedger.Core.Models"
+             xmlns:views="using:SalesLedger.Core.Views"
              mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="800"
              x:Class="SalesLedger.Core.Views.LedgerDashboardView"
              x:DataType="vm:LedgerDashboardViewModel"
@@ -39,7 +40,7 @@
                         </Button>
                     </StackPanel>
 
-                    <!-- Add & Finalize Buttons -->
+                    <!-- Add Button (preview / finalize live on the Payout Reports page) -->
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Bottom">
                         <Button Content="+ Add Transaction" 
                                 Command="{Binding ShowAddSaleDialogCommand}" 
@@ -51,28 +52,6 @@
                                 </Style>
                             </Button.Styles>
                         </Button>
-                        
-                        <Button Content="Preview Report" 
-                                Command="{Binding PreviewPeriodReportCommand}" 
-                                Background="{DynamicResource BorderSlate}" Foreground="White" 
-                                FontWeight="Bold" Padding="16,8" CornerRadius="6" Height="36" VerticalContentAlignment="Center">
-                            <Button.Styles>
-                                <Style Selector="Button:pointerover">
-                                    <Setter Property="Background" Value="{DynamicResource TextMuted}"/>
-                                </Style>
-                            </Button.Styles>
-                        </Button>
-
-                        <Button Content="Finalize Pay Period" 
-                                Command="{Binding ShowPeriodCloseDialogCommand}" 
-                                Background="{DynamicResource AccentGreen}" Foreground="White" 
-                                FontWeight="Bold" Padding="16,8" CornerRadius="6" Height="36" VerticalContentAlignment="Center">
-                            <Button.Styles>
-                                <Style Selector="Button:pointerover">
-                                    <Setter Property="Background" Value="{DynamicResource AccentGreenHover}"/>
-                                </Style>
-                            </Button.Styles>
-                        </Button>
                     </StackPanel>
                 </Grid>
 
@@ -80,17 +59,42 @@
                 <Grid ColumnDefinitions="*, *, *, *">
                     <!-- Total Sales Card -->
                     <Border Grid.Column="0" Background="{DynamicResource BgCardDark}" BorderBrush="{DynamicResource BorderSlate}" BorderThickness="1" CornerRadius="10" Padding="20" Margin="0,0,10,0">
+                        <ToolTip.Tip>
+                            <Border Background="{DynamicResource BgAppDark}" BorderBrush="{DynamicResource TextMuted}" BorderThickness="1" CornerRadius="8" Padding="14">
+                                <Grid ColumnDefinitions="*, Auto" RowDefinitions="Auto, Auto, Auto, Auto, Auto" RowSpacing="6" MinWidth="230">
+                                    <TextBlock Grid.Row="0" Text="Gross sales (everything sold)" Foreground="{DynamicResource TextSecondary}" FontSize="11"/>
+                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding GrossSales, StringFormat='\{0:C}'}" Foreground="{DynamicResource AccentBlue}" FontSize="11" FontWeight="Bold" Margin="12,0,0,0"/>
+                                    <TextBlock Grid.Row="1" Text="Returns" Foreground="{DynamicResource TextSecondary}" FontSize="11"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding ReturnsAmount, StringFormat='-\{0:C}'}" Foreground="{DynamicResource AccentRed}" FontSize="11" FontWeight="Bold" Margin="12,0,0,0"/>
+                                    <Border Grid.Row="2" Grid.ColumnSpan="2" BorderBrush="{DynamicResource BorderSlate}" BorderThickness="0,0,0,1"/>
+                                    <TextBlock Grid.Row="3" Text="Net sales" Foreground="{DynamicResource TextPrimary}" FontSize="11" FontWeight="SemiBold"/>
+                                    <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding NetSales, StringFormat='\{0:C}'}" Foreground="{DynamicResource TextPrimary}" FontSize="11" FontWeight="Bold" Margin="12,0,0,0"/>
+                                    <TextBlock Grid.Row="4" Grid.ColumnSpan="2" Foreground="{DynamicResource TextSecondary}" FontSize="10">
+                                        <Run Text="{Binding GrossUnitsSold}"/>
+                                        <Run Text="items sold ·"/>
+                                        <Run Text="{Binding ReturnCount}"/>
+                                        <Run Text="return transaction(s)"/>
+                                    </TextBlock>
+                                </Grid>
+                            </Border>
+                        </ToolTip.Tip>
                         <StackPanel Spacing="8">
-                            <TextBlock Text="Total Sales Volume" Foreground="{DynamicResource TextSecondary}" FontSize="12" FontWeight="SemiBold"/>
-                            <TextBlock Text="{Binding TotalSales, StringFormat='\{0:C}'}" Foreground="{DynamicResource AccentBlue}" FontSize="26" FontWeight="Bold"/>
+                            <TextBlock Text="Total Sales (Gross)" Foreground="{DynamicResource TextSecondary}" FontSize="12" FontWeight="SemiBold"/>
+                            <TextBlock Text="{Binding GrossSales, StringFormat='\{0:C}'}" Foreground="{DynamicResource AccentBlue}" FontSize="26" FontWeight="Bold"/>
+                            <TextBlock Text="{Binding SalesSubText}" Foreground="{DynamicResource TextSecondary}" FontSize="11"/>
                         </StackPanel>
                     </Border>
 
                     <!-- Units Sold Card -->
                     <Border Grid.Column="1" Background="{DynamicResource BgCardDark}" BorderBrush="{DynamicResource BorderSlate}" BorderThickness="1" CornerRadius="10" Padding="20" Margin="10,0,10,0">
+                        <ToolTip.Tip>
+                            <TextBlock MaxWidth="260" TextWrapping="Wrap" FontSize="11"
+                                       Text="Items sold minus items that came back (full returns). A partial refund, where the customer keeps the item, doesn't reduce this count."/>
+                        </ToolTip.Tip>
                         <StackPanel Spacing="8">
-                            <TextBlock Text="Total Units Sold" Foreground="{DynamicResource TextSecondary}" FontSize="12" FontWeight="SemiBold"/>
+                            <TextBlock Text="Units Sold (Net)" Foreground="{DynamicResource TextSecondary}" FontSize="12" FontWeight="SemiBold"/>
                             <TextBlock Text="{Binding TotalUnitsSold}" Foreground="{DynamicResource AccentGreen}" FontSize="26" FontWeight="Bold"/>
+                            <TextBlock Text="{Binding UnitsSubText}" Foreground="{DynamicResource TextSecondary}" FontSize="11"/>
                         </StackPanel>
                     </Border>
 
@@ -99,6 +103,7 @@
                         <StackPanel Spacing="8">
                             <TextBlock Text="Total Commission Earned" Foreground="{DynamicResource TextSecondary}" FontSize="12" FontWeight="SemiBold"/>
                             <TextBlock Text="{Binding TotalCommission, StringFormat='\{0:C}'}" Foreground="{DynamicResource AccentOrange}" FontSize="26" FontWeight="Bold"/>
+                            <TextBlock Text="After return adjustments" Foreground="{DynamicResource TextSecondary}" FontSize="11"/>
                         </StackPanel>
                     </Border>
 
@@ -107,18 +112,29 @@
                         <StackPanel Spacing="8">
                             <TextBlock Text="Average Sale Price (ASP)" Foreground="{DynamicResource TextSecondary}" FontSize="12" FontWeight="SemiBold"/>
                             <TextBlock Text="{Binding AverageSalePrice, StringFormat='\{0:C}'}" Foreground="{DynamicResource AccentPink}" FontSize="26" FontWeight="Bold"/>
+                            <TextBlock Text="All sale types, items kept" Foreground="{DynamicResource TextSecondary}" FontSize="11"
+                                       ToolTip.Tip="Average price of everything sold in this range (new, used, eBay and warranty), not counting items that were returned or fully refunded."/>
                         </StackPanel>
                     </Border>
                 </Grid>
 
                 <!-- MIDDLE SECTION: Trends Chart (Full Width) -->
-                <Grid ColumnDefinitions="*" Height="400">
+                <Grid ColumnDefinitions="*" Height="420">
                     <Border Background="{DynamicResource BgCardDark}" BorderBrush="{DynamicResource BorderSlate}" BorderThickness="1" CornerRadius="10" Padding="20">
                         <Grid RowDefinitions="Auto, *">
                             <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="0,0,0,12">
-                                <TextBlock Text="Sales Trends Graph" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
-                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12">
-                                    <ComboBox ItemsSource="{Binding TimeframeOptions}" SelectedItem="{Binding SelectedTimeframe, Mode=TwoWay}" Width="150" Height="30" VerticalContentAlignment="Center" FontSize="12"/>
+                                <StackPanel Spacing="2" VerticalAlignment="Center">
+                                    <TextBlock Text="Sales Trends Graph" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
+                                    <TextBlock Text="{Binding RangeDescription}" FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                                    <!-- Custom range (KPIs, chart and category breakdown all follow it) -->
+                                    <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding IsCustomTimeframe}">
+                                        <CalendarDatePicker SelectedDate="{Binding ChartStartDate, Mode=TwoWay}" Width="130" Height="30" FontSize="12" ToolTip.Tip="Start date"/>
+                                        <TextBlock Text="to" Foreground="{DynamicResource TextSecondary}" FontSize="12" VerticalAlignment="Center"/>
+                                        <CalendarDatePicker SelectedDate="{Binding ChartEndDate, Mode=TwoWay}" Width="130" Height="30" FontSize="12" ToolTip.Tip="End date"/>
+                                    </StackPanel>
+                                    <ComboBox ItemsSource="{Binding TimeframeOptions}" SelectedItem="{Binding SelectedTimeframe, Mode=TwoWay}" Width="170" Height="30" VerticalContentAlignment="Center" FontSize="12"/>
                                     <ComboBox ItemsSource="{Binding MetricOptions}" SelectedItem="{Binding SelectedMetric, Mode=TwoWay}" Width="120" Height="30" VerticalContentAlignment="Center" FontSize="12"/>
                                 </StackPanel>
                             </Grid>
@@ -287,7 +303,7 @@
 
                 <!-- TRANSACTION LEDGER DATA GRID -->
                 <Border Background="{DynamicResource BgCardDark}" BorderBrush="{DynamicResource BorderSlate}" BorderThickness="1" CornerRadius="10" Padding="12">
-                    <Grid RowDefinitions="Auto, Auto, *">
+                    <Grid RowDefinitions="Auto, Auto, Auto, *">
                         <!-- Header with title, Reset Filters button, and High Value toggle -->
                         <Grid Grid.Row="0" ColumnDefinitions="*, Auto, Auto" Margin="12,8,12,12">
                             <TextBlock Text="Recent Sales Ledger" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
@@ -346,8 +362,16 @@
                             </StackPanel>
                         </StackPanel>
                         
+                        <!-- Ledger message banner (e.g. an action that isn't allowed) -->
+                        <Border Grid.Row="2" IsVisible="{Binding HasLedgerMessage}" Background="{DynamicResource BgAppDark}" BorderBrush="{DynamicResource AccentRed}" BorderThickness="1" CornerRadius="6" Padding="12,8" Margin="12,0,12,12">
+                            <Grid ColumnDefinitions="*, Auto">
+                                <TextBlock Text="{Binding LedgerMessage}" Foreground="{DynamicResource AccentRed}" FontSize="12" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                                <Button Grid.Column="1" Content="Dismiss" Command="{Binding DismissLedgerMessageCommand}" Background="{DynamicResource BorderSlate}" Foreground="White" Padding="10,4" FontSize="11" CornerRadius="4" Margin="12,0,0,0"/>
+                            </Grid>
+                        </Border>
+
                         <!-- DataGrid -->
-                        <DataGrid Grid.Row="2" 
+                        <DataGrid Grid.Row="3"
                                   ItemsSource="{Binding RecentSalesView}" 
                                   SelectedItem="{Binding SelectedSale, Mode=TwoWay}"
                                   AutoGenerateColumns="False" 
@@ -373,11 +397,19 @@
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate x:DataType="models:SaleRecord">
                                             <StackPanel Name="ActionPanel" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                                <!-- Edit Button -->
-                                                <Button Command="{Binding $parent[DataGrid].((vm:LedgerDashboardViewModel)DataContext).EditSaleCommand}"
+                                                <!-- Open Receipt Button (any sale, including paid receipts, to view or add products) -->
+                                                <Button Command="{Binding $parent[DataGrid].((vm:LedgerDashboardViewModel)DataContext).OpenReceiptCommand}"
                                                         CommandParameter="{Binding}"
-                                                        ToolTip.Tip="Edit Transaction"
-                                                        IsVisible="{Binding IsPending}"
+                                                        ToolTip.Tip="Open Receipt (view, edit, or add products)"
+                                                        IsVisible="{Binding CanOpenReceipt}"
+                                                        Background="{DynamicResource BorderSlate}" Padding="6,2" CornerRadius="4" BorderThickness="0" Height="26" Width="26" VerticalContentAlignment="Center" HorizontalContentAlignment="Center">
+                                                    <TextBlock Text="✎" Foreground="White" FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                                </Button>
+                                                <!-- Edit Return Button (pending return lines: change the refund amount) -->
+                                                <Button Command="{Binding $parent[DataGrid].((vm:LedgerDashboardViewModel)DataContext).EditReturnLineCommand}"
+                                                        CommandParameter="{Binding}"
+                                                        ToolTip.Tip="Edit Return Amount"
+                                                        IsVisible="{Binding CanEditReturnLine}"
                                                         Background="{DynamicResource BorderSlate}" Padding="6,2" CornerRadius="4" BorderThickness="0" Height="26" Width="26" VerticalContentAlignment="Center" HorizontalContentAlignment="Center">
                                                     <TextBlock Text="✎" Foreground="White" FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                                                 </Button>
@@ -428,7 +460,9 @@
                     <Grid ColumnDefinitions="*, 12, *, 12, *">
                         <StackPanel Grid.Column="0" Spacing="4">
                             <TextBlock Text="{Binding InvoiceLabel}" Foreground="{DynamicResource TextPrimary}" FontSize="11"/>
-                            <TextBox Text="{Binding InvoiceNumber, Mode=TwoWay}" PlaceholderText="{Binding InvoicePlaceholder}" Height="36" VerticalContentAlignment="Center"/>
+                            <TextBox x:Name="InvoiceNumberBox" Text="{Binding InvoiceNumber, Mode=TwoWay}" PlaceholderText="{Binding InvoicePlaceholder}" IsReadOnly="{Binding IsInvoiceLocked}" Height="36" VerticalContentAlignment="Center"
+                                     ToolTip.Tip="Locked because part of this receipt has been paid or returned"
+                                     ToolTip.ServiceEnabled="{Binding IsInvoiceLocked}"/>
                         </StackPanel>
                         <StackPanel Grid.Column="2" Spacing="4">
                             <TextBlock Text="Transaction Date" Foreground="{DynamicResource TextPrimary}" FontSize="11"/>
@@ -444,6 +478,11 @@
                         </StackPanel>
                     </Grid>
 
+                    <!-- What's already on this receipt -->
+                    <Border IsVisible="{Binding HasReceiptNotice}" Background="{DynamicResource BgAppDark}" BorderBrush="{DynamicResource AccentBlue}" BorderThickness="1" CornerRadius="6" Padding="10,6">
+                        <TextBlock Text="{Binding ReceiptNotice}" Foreground="{DynamicResource TextPrimary}" FontSize="11" TextWrapping="Wrap"/>
+                    </Border>
+
                     <!-- Product Entry Form -->
                     <Border BorderBrush="{DynamicResource BorderSlate}" BorderThickness="0,1,0,0" Padding="0,12,0,0">
                         <StackPanel Spacing="12">
@@ -452,11 +491,19 @@
                             <Grid ColumnDefinitions="*, 12, *">
                                 <StackPanel Grid.Column="0" Spacing="4">
                                     <TextBlock Text="SKU / Item code" Foreground="{DynamicResource TextPrimary}" FontSize="11"/>
-                                    <TextBox Text="{Binding Sku, Mode=TwoWay}" PlaceholderText="e.g. SKU-880" Height="36" VerticalContentAlignment="Center"/>
+                                    <TextBox x:Name="SkuBox" Text="{Binding Sku, Mode=TwoWay}" PlaceholderText="e.g. SKU-880" Height="36" VerticalContentAlignment="Center"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="2" Spacing="4">
                                     <TextBlock Text="Product Name" Foreground="{DynamicResource TextPrimary}" FontSize="11"/>
-                                    <TextBox Text="{Binding ProductName, Mode=TwoWay}" PlaceholderText="e.g. Sony Alpha 7 IV" Height="36" VerticalContentAlignment="Center"/>
+                                    <!-- Suggests names already in the ledger; picking one fills in its last category -->
+                                    <AutoCompleteBox x:Name="ProductNameBox" Text="{Binding ProductName, Mode=TwoWay}"
+                                                     ItemsSource="{Binding ProductNameSuggestions}"
+                                                     SelectedItem="{Binding SelectedProductSuggestion, Mode=TwoWay}"
+                                                     FilterMode="Contains"
+                                                     MinimumPrefixLength="2"
+                                                     MaxDropDownHeight="220"
+                                                     PlaceholderText="e.g. Sony Alpha 7 IV"
+                                                     Height="36"/>
                                 </StackPanel>
                             </Grid>
 
@@ -475,7 +522,7 @@
                                 </Panel>
                                 <StackPanel Grid.Column="2" Spacing="4">
                                     <TextBlock Text="Sale Price" Foreground="{DynamicResource TextPrimary}" FontSize="11"/>
-                                    <NumericUpDown Value="{Binding SalePrice, Mode=TwoWay}" Minimum="0" FormatString="C2" Height="36"/>
+                                    <NumericUpDown x:Name="SalePriceBox" Value="{Binding SalePrice, Mode=TwoWay}" Minimum="0" FormatString="C2" Height="36"/>
                                 </StackPanel>
                             </Grid>
 
@@ -498,11 +545,11 @@
                                     </StackPanel>
                                 </Panel>
 
-                                <!-- Add Item Button (Only shown when not editing) -->
-                                <Button Grid.Column="2" Content="+ Add Product to Receipt" Command="{Binding AddDialogItemCommand}" 
-                                        Background="{DynamicResource AccentPurple}" Foreground="White" Height="36" 
-                                        VerticalContentAlignment="Center" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" 
-                                        CornerRadius="6" FontWeight="SemiBold" IsVisible="{Binding !IsEditing}">
+                                <!-- Add Item Button (also when an existing receipt is open, to add another product) -->
+                                <Button x:Name="AddItemButton" Grid.Column="2" Content="{Binding AddItemButtonText}" Command="{Binding AddDialogItemCommand}"
+                                        Background="{DynamicResource AccentPurple}" Foreground="White" Height="36"
+                                        VerticalContentAlignment="Center" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                        CornerRadius="6" FontWeight="SemiBold">
                                     <Button.Styles>
                                         <Style Selector="Button:pointerover">
                                             <Setter Property="Background" Value="{DynamicResource AccentPurpleHover}"/>
@@ -513,53 +560,69 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- Added Items List (Only visible when adding and has items) -->
+                    <!-- Receipt Items: editable pending items, plus read-only paid / returned items and return lines -->
                     <StackPanel Spacing="8" IsVisible="{Binding HasDialogSales}" Margin="0,4,0,0">
-                        <TextBlock Text="Items Added to Receipt" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondary}"/>
+                        <TextBlock Text="Items on this Receipt" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondary}"/>
                         <Border BorderBrush="{DynamicResource BorderSlate}" BorderThickness="1" CornerRadius="6" Background="{DynamicResource BgAppDark}">
-                            <ScrollViewer MaxHeight="140">
-                                <ItemsControl ItemsSource="{Binding DialogSales}">
+                            <ScrollViewer MaxHeight="180">
+                                <ItemsControl ItemsSource="{Binding DialogLines}">
                                     <ItemsControl.ItemTemplate>
-                                        <DataTemplate x:DataType="models:SaleRecord">
+                                        <DataTemplate x:DataType="vm:ReceiptLineViewModel">
                                             <Border BorderBrush="{DynamicResource BorderSlate}" BorderThickness="0,0,0,1" Padding="8,6" Background="Transparent">
-                                                <Grid ColumnDefinitions="90, *, 70, 70, 100, Auto">
-                                                    <!-- SKU -->
-                                                    <TextBlock Grid.Column="0" Text="{Binding Sku}" Foreground="{DynamicResource TextPrimary}" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                                                    <!-- Product Name -->
-                                                    <TextBlock Grid.Column="1" Text="{Binding ProductName}" Foreground="{DynamicResource TextPrimary}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                                                    <!-- Price -->
-                                                    <TextBlock Grid.Column="2" Text="{Binding SalePrice, StringFormat={}{0:C2}}" Foreground="{DynamicResource TextPrimary}" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                                                    <!-- Commission -->
-                                                    <TextBlock Grid.Column="3" Text="{Binding CalculatedCommission, StringFormat={}{0:C2}}" Foreground="{DynamicResource AccentYellow}" FontSize="11" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                                                    <!-- Status -->
-                                                    <TextBlock Grid.Column="4" Text="{Binding Status}" Foreground="{DynamicResource TextSecondary}" FontSize="10" VerticalAlignment="Center" Margin="8,0,0,0"/>
-                                                    <!-- Action Buttons Panel -->
-                                                    <StackPanel Grid.Column="5" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-                                                        <!-- Edit Button -->
-                                                        <Button Command="{Binding $parent[UserControl].((vm:LedgerDashboardViewModel)DataContext).EditDialogItemCommand}"
+                                                <StackPanel Spacing="4">
+                                                    <Grid ColumnDefinitions="90, *, 75, 70, 100, Auto">
+                                                        <!-- SKU -->
+                                                        <TextBlock Grid.Column="0" Text="{Binding Sale.Sku}" Foreground="{DynamicResource TextPrimary}" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                        <!-- Product Name -->
+                                                        <TextBlock Grid.Column="1" Text="{Binding Sale.ProductName}" Foreground="{DynamicResource TextPrimary}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                        <!-- Price -->
+                                                        <TextBlock Grid.Column="2" Text="{Binding Sale.SalePrice, StringFormat={}{0:C2}}" Foreground="{DynamicResource TextPrimary}" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                        <!-- Commission -->
+                                                        <TextBlock Grid.Column="3" Text="{Binding Sale.CalculatedCommission, StringFormat={}{0:C2}}" Foreground="{DynamicResource AccentYellow}" FontSize="11" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                        <!-- Status -->
+                                                        <TextBlock Grid.Column="4" Text="{Binding StatusText}" Foreground="{DynamicResource TextSecondary}" FontSize="10" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                                        <!-- Action Buttons Panel -->
+                                                        <StackPanel Grid.Column="5" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                                            <!-- Edit Button (pending items only) -->
+                                                            <Button Command="{Binding $parent[UserControl].((vm:LedgerDashboardViewModel)DataContext).EditDialogItemCommand}"
+                                                                    CommandParameter="{Binding}"
+                                                                    ToolTip.Tip="Edit Item"
+                                                                    IsVisible="{Binding IsEditable}"
+                                                                    Background="{DynamicResource BorderSlate}" Padding="6,2" CornerRadius="4" BorderThickness="0" Height="24" Width="24" VerticalContentAlignment="Center" HorizontalContentAlignment="Center">
+                                                                <TextBlock Text="✎" Foreground="White" FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                                            </Button>
+                                                            <!-- Return Button (pending and paid items; applied on save) -->
+                                                            <Button Command="{Binding $parent[UserControl].((vm:LedgerDashboardViewModel)DataContext).ReturnDialogItemCommand}"
+                                                                    CommandParameter="{Binding}"
+                                                                    ToolTip.Tip="Return Item"
+                                                                    IsVisible="{Binding CanStageReturn}"
+                                                                    Background="{DynamicResource AccentRedHover}" Padding="6,2" CornerRadius="4" BorderThickness="0" Height="24" Width="24" VerticalContentAlignment="Center" HorizontalContentAlignment="Center">
+                                                                <TextBlock Text="↶" Foreground="White" FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                                            </Button>
+                                                            <!-- Delete Button (pending items only) -->
+                                                            <Button Command="{Binding $parent[UserControl].((vm:LedgerDashboardViewModel)DataContext).RemoveDialogItemCommand}"
+                                                                    CommandParameter="{Binding}"
+                                                                    ToolTip.Tip="Remove Item from Receipt"
+                                                                    IsVisible="{Binding IsEditable}"
+                                                                    Background="{DynamicResource AccentRed}" Padding="6,2" CornerRadius="4" BorderThickness="0" Height="24" Width="24" VerticalContentAlignment="Center" HorizontalContentAlignment="Center">
+                                                                <TextBlock Text="✕" Foreground="White" FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                                            </Button>
+                                                            <!-- Read-only marker -->
+                                                            <TextBlock Text="🔒" IsVisible="{Binding IsReadOnly}" ToolTip.Tip="Read-only: paid, returned, or a return line" FontSize="11" VerticalAlignment="Center" Margin="4,0"/>
+                                                        </StackPanel>
+                                                    </Grid>
+
+                                                    <!-- A line dated differently from the receipt (e.g. added later with today's date) -->
+                                                    <TextBlock Text="{Binding DateNote}" IsVisible="{Binding HasDateNote}" Foreground="{DynamicResource AccentYellow}" FontSize="10"/>
+
+                                                    <!-- Staged return, applied when the receipt is saved -->
+                                                    <Grid ColumnDefinitions="*, Auto" IsVisible="{Binding HasStagedReturn}">
+                                                        <TextBlock Text="{Binding StagedReturnText}" Foreground="{DynamicResource AccentRed}" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                        <Button Grid.Column="1" Content="Undo" Command="{Binding $parent[UserControl].((vm:LedgerDashboardViewModel)DataContext).UndoStagedReturnCommand}"
                                                                 CommandParameter="{Binding}"
-                                                                ToolTip.Tip="Edit Item"
-                                                                IsVisible="{Binding IsPending}"
-                                                                Background="{DynamicResource BorderSlate}" Padding="6,2" CornerRadius="4" BorderThickness="0" Height="24" Width="24" VerticalContentAlignment="Center" HorizontalContentAlignment="Center">
-                                                            <TextBlock Text="✎" Foreground="White" FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                                                        </Button>
-                                                        <!-- Return Button -->
-                                                        <Button Command="{Binding $parent[UserControl].((vm:LedgerDashboardViewModel)DataContext).ReturnDialogItemCommand}"
-                                                                CommandParameter="{Binding}"
-                                                                ToolTip.Tip="Process Return"
-                                                                IsVisible="{Binding CanProcessReturn}"
-                                                                Background="{DynamicResource AccentRedHover}" Padding="6,2" CornerRadius="4" BorderThickness="0" Height="24" Width="24" VerticalContentAlignment="Center" HorizontalContentAlignment="Center">
-                                                            <TextBlock Text="↶" Foreground="White" FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                                                        </Button>
-                                                        <!-- Delete Button -->
-                                                        <Button Command="{Binding $parent[UserControl].((vm:LedgerDashboardViewModel)DataContext).RemoveDialogItemCommand}"
-                                                                CommandParameter="{Binding}"
-                                                                ToolTip.Tip="Delete Item"
-                                                                Background="{DynamicResource AccentRed}" Padding="6,2" CornerRadius="4" BorderThickness="0" Height="24" Width="24" VerticalContentAlignment="Center" HorizontalContentAlignment="Center">
-                                                            <TextBlock Text="✕" Foreground="White" FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                                                        </Button>
-                                                    </StackPanel>
-                                                </Grid>
+                                                                Background="{DynamicResource BorderSlate}" Foreground="White" Padding="8,1" FontSize="10" CornerRadius="4"/>
+                                                    </Grid>
+                                                </StackPanel>
                                             </Border>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
@@ -567,6 +630,8 @@
                             </ScrollViewer>
                         </Border>
                     </StackPanel>
+
+                    <TextBlock Text="{Binding DialogErrorMessage}" IsVisible="{Binding HasDialogError}" Foreground="{DynamicResource AccentRed}" FontSize="12" TextWrapping="Wrap"/>
 
                     <!-- Dialog Actions Buttons -->
                     <Grid ColumnDefinitions="*, 12, *" Margin="0,12,0,0">
@@ -577,7 +642,7 @@
                                 </Style>
                             </Button.Styles>
                         </Button>
-                        <Button Grid.Column="2" Content="Save Entry" Command="{Binding SaveSaleCommand}" Background="{DynamicResource AccentBlue}" Foreground="White" Height="36" VerticalContentAlignment="Center" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" CornerRadius="6" FontWeight="SemiBold">
+                        <Button x:Name="SaveEntryButton" Grid.Column="2" Content="Save Entry" Command="{Binding SaveSaleCommand}" Background="{DynamicResource AccentBlue}" Foreground="White" Height="36" VerticalContentAlignment="Center" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" CornerRadius="6" FontWeight="SemiBold">
                             <Button.Styles>
                                 <Style Selector="Button:pointerover">
                                     <Setter Property="Background" Value="{DynamicResource AccentBlueHover}"/>
@@ -589,166 +654,9 @@
             </Border>
         </Grid>
 
-        <!-- DIALOG OVERLAY: Period Close -->
-        <Grid Background="{DynamicResource BgOverlay}" IsVisible="{Binding IsPeriodCloseVisible}">
-            <Border Background="{DynamicResource BgCardDark}" BorderBrush="{DynamicResource BorderSlate}" BorderThickness="1" CornerRadius="12" Padding="24" Width="400" VerticalAlignment="Center" HorizontalAlignment="Center">
-                <StackPanel Spacing="16">
-                    <TextBlock Text="Finalize Pay Period" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
-                    <TextBlock Text="This action will freeze all pending transactions, locks their status to Paid, and compiles the QuestPDF payout statement. This action cannot be undone." FontSize="12" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"/>
-                    
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="Report Submission Name" Foreground="{DynamicResource TextPrimary}" FontSize="11"/>
-                        <TextBox Text="{Binding PeriodReportName, Mode=TwoWay}" PlaceholderText="e.g. May 2026 Submission" Height="36" VerticalContentAlignment="Center"/>
-                    </StackPanel>
+        <!-- DIALOG OVERLAY: CSV Import Wizard (mapping → review → import) -->
+        <views:CsvImportDialogView DataContext="{Binding Import}"/>
 
-                    <Grid ColumnDefinitions="*, 12, *" Margin="0,8,0,0">
-                        <Button Grid.Column="0" Content="Cancel" Command="{Binding ClosePeriodCloseDialogCommand}" Background="{DynamicResource BorderSlate}" Foreground="White" Height="36" VerticalContentAlignment="Center" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" CornerRadius="6">
-                            <Button.Styles>
-                                <Style Selector="Button:pointerover">
-                                    <Setter Property="Background" Value="{DynamicResource TextMuted}"/>
-                                </Style>
-                            </Button.Styles>
-                        </Button>
-                        <Button Grid.Column="2" Content="Execute Close" Command="{Binding ExecutePeriodCloseCommand}" Background="{DynamicResource AccentGreen}" Foreground="White" Height="36" VerticalContentAlignment="Center" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" CornerRadius="6" FontWeight="SemiBold">
-                            <Button.Styles>
-                                <Style Selector="Button:pointerover">
-                                    <Setter Property="Background" Value="{DynamicResource AccentGreenHover}"/>
-                                </Style>
-                            </Button.Styles>
-                        </Button>
-                    </Grid>
-                </StackPanel>
-            </Border>
-        </Grid>
-
-        <!-- DIALOG OVERLAY: CSV Import Wizard -->
-        <Grid Background="{DynamicResource BgOverlay}" IsVisible="{Binding IsImportDialogVisible}">
-            <Border Background="{DynamicResource BgCardDark}" BorderBrush="{DynamicResource BorderSlate}" BorderThickness="1" CornerRadius="12" Padding="24" Width="520" VerticalAlignment="Center" HorizontalAlignment="Center">
-                <StackPanel Spacing="16">
-                    <TextBlock Text="Import CSV Spiff Sheet" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
-                    <TextBlock Text="Import transaction data from a CSV spiff sheet. Choose a file, select columns mapping, and insert records." FontSize="11" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"/>
-                    
-                    <!-- File browser row -->
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="CSV File Path" Foreground="{DynamicResource TextPrimary}" FontSize="11"/>
-                        <Grid ColumnDefinitions="*, 8, Auto">
-                            <TextBox Text="{Binding CsvFilePath}" IsReadOnly="True" PlaceholderText="Select file..." Height="36" VerticalContentAlignment="Center"/>
-                            <Button Grid.Column="2" Content="Browse..." Command="{Binding BrowseCsvFileCommand}" Background="{DynamicResource BorderSlate}" Foreground="White" Height="36" VerticalContentAlignment="Center" Padding="12,0">
-                                <Button.Styles>
-                                    <Style Selector="Button:pointerover">
-                                        <Setter Property="Background" Value="{DynamicResource TextMuted}"/>
-                                    </Style>
-                                </Button.Styles>
-                            </Button>
-                        </Grid>
-                    </StackPanel>
-
-                    <!-- Import Mode -->
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="Import Records As:" Foreground="{DynamicResource TextPrimary}" FontSize="11"/>
-                        <ComboBox SelectedItem="{Binding ImportAsType, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="36" VerticalContentAlignment="Center">
-                            <ComboBox.Items>
-                                <x:String>Standard</x:String>
-                                <x:String>Warranty</x:String>
-                                <x:String>Ebay</x:String>
-                            </ComboBox.Items>
-                        </ComboBox>
-                    </StackPanel>
-
-                    <!-- Map columns panel (visible if a file has headers loaded) -->
-                    <StackPanel Spacing="12" IsVisible="{Binding CsvHeaders.Count}">
-                        <TextBlock Text="Column Mapping" Foreground="{DynamicResource TextPrimary}" FontSize="13" FontWeight="Bold" Margin="0,4,0,0"/>
-
-                        <!-- Basic fields mapping grid -->
-                        <Grid ColumnDefinitions="*, 12, *">
-                            <StackPanel Grid.Column="0" Spacing="4">
-                                <TextBlock Text="Date Column" Foreground="{DynamicResource TextPrimary}" FontSize="10"/>
-                                <ComboBox ItemsSource="{Binding CsvHeaders}" SelectedItem="{Binding SelectedDateHeader, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="32"/>
-                            </StackPanel>
-                            <StackPanel Grid.Column="2" Spacing="4">
-                                <TextBlock Text="Invoice / Receipt" Foreground="{DynamicResource TextPrimary}" FontSize="10"/>
-                                <ComboBox ItemsSource="{Binding CsvHeaders}" SelectedItem="{Binding SelectedInvoiceHeader, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="32"/>
-                            </StackPanel>
-                        </Grid>
-
-                        <Grid ColumnDefinitions="*, 12, *">
-                            <StackPanel Grid.Column="0" Spacing="4">
-                                <TextBlock Text="Product SKU" Foreground="{DynamicResource TextPrimary}" FontSize="10"/>
-                                <ComboBox ItemsSource="{Binding CsvHeaders}" SelectedItem="{Binding SelectedSkuHeader, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="32"/>
-                            </StackPanel>
-                            <StackPanel Grid.Column="2" Spacing="4">
-                                <TextBlock Text="Product Name" Foreground="{DynamicResource TextPrimary}" FontSize="10"/>
-                                <ComboBox ItemsSource="{Binding CsvHeaders}" SelectedItem="{Binding SelectedProductNameHeader, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="32"/>
-                            </StackPanel>
-                        </Grid>
-
-                        <Grid ColumnDefinitions="*, 12, *">
-                            <StackPanel Grid.Column="0" Spacing="4" IsVisible="{Binding IsStandardOrEbayImport}">
-                                <TextBlock Text="Category" Foreground="{DynamicResource TextPrimary}" FontSize="10"/>
-                                <ComboBox ItemsSource="{Binding CsvHeaders}" SelectedItem="{Binding SelectedCategoryHeader, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="32"/>
-                            </StackPanel>
-                            <StackPanel Grid.Column="2" Spacing="4">
-                                <TextBlock Text="Sale Price" Foreground="{DynamicResource TextPrimary}" FontSize="10"/>
-                                <ComboBox ItemsSource="{Binding CsvHeaders}" SelectedItem="{Binding SelectedPriceHeader, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="32"/>
-                            </StackPanel>
-                        </Grid>
-
-                        <!-- Standard/eBay specific mapper -->
-                        <StackPanel Spacing="8" IsVisible="{Binding IsStandardOrEbayImport}">
-                            <Grid ColumnDefinitions="*, 12, *">
-                                <StackPanel Grid.Column="0" Spacing="4">
-                                    <TextBlock Text="Is Used Gear Column" Foreground="{DynamicResource TextPrimary}" FontSize="10"/>
-                                    <ComboBox ItemsSource="{Binding CsvHeaders}" SelectedItem="{Binding SelectedIsUsedHeader, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="32"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="2" Spacing="4">
-                                    <TextBlock Text="Default Category Fallback" Foreground="{DynamicResource TextPrimary}" FontSize="10"/>
-                                    <ComboBox ItemsSource="{Binding Categories}" SelectedItem="{Binding DefaultCategory, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="32"/>
-                                </StackPanel>
-                            </Grid>
-                            <CheckBox IsChecked="{Binding AllStandardAreUsed, Mode=TwoWay}">
-                                <TextBlock Text="Treat all imports as USED unless marked new" Foreground="{DynamicResource TextSecondary}" FontSize="10"/>
-                            </CheckBox>
-                        </StackPanel>
-
-                        <!-- Warranty specific mapper -->
-                        <StackPanel Spacing="8" IsVisible="{Binding IsWarrantyImport}">
-                            <Grid ColumnDefinitions="*, 12, *">
-                                <StackPanel Grid.Column="0" Spacing="4">
-                                    <TextBlock Text="Warranty Type Column" Foreground="{DynamicResource TextPrimary}" FontSize="10"/>
-                                    <ComboBox ItemsSource="{Binding CsvHeaders}" SelectedItem="{Binding SelectedWarrantyTypeHeader, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="32"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="2" Spacing="4">
-                                    <TextBlock Text="Wholesale Price Column" Foreground="{DynamicResource TextPrimary}" FontSize="10"/>
-                                    <ComboBox ItemsSource="{Binding CsvHeaders}" SelectedItem="{Binding SelectedWholesalePriceHeader, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="32"/>
-                                </StackPanel>
-                            </Grid>
-                            <StackPanel Spacing="4">
-                                <TextBlock Text="Default Warranty Fallback" Foreground="{DynamicResource TextPrimary}" FontSize="10"/>
-                                <ComboBox ItemsSource="{Binding WarrantyTypes}" SelectedItem="{Binding DefaultWarrantyType, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="32"/>
-                            </StackPanel>
-                        </StackPanel>
-                    </StackPanel>
-
-                    <!-- Import Actions -->
-                    <Grid ColumnDefinitions="*, 12, *" Margin="0,12,0,0">
-                        <Button Grid.Column="0" Content="Cancel" Command="{Binding CloseImportDialogCommand}" Background="{DynamicResource BorderSlate}" Foreground="White" Height="36" VerticalContentAlignment="Center" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" CornerRadius="6">
-                            <Button.Styles>
-                                <Style Selector="Button:pointerover">
-                                    <Setter Property="Background" Value="{DynamicResource TextMuted}"/>
-                                </Style>
-                            </Button.Styles>
-                        </Button>
-                        <Button Grid.Column="2" Content="Process Import" Command="{Binding ExecuteCsvImportCommand}" Background="{DynamicResource AccentPurple}" Foreground="White" Height="36" VerticalContentAlignment="Center" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" CornerRadius="6" FontWeight="SemiBold" IsEnabled="{Binding CsvHeaders.Count}">
-                            <Button.Styles>
-                                <Style Selector="Button:pointerover">
-                                    <Setter Property="Background" Value="{DynamicResource AccentPurpleHover}"/>
-                                </Style>
-                            </Button.Styles>
-                        </Button>
-                    </Grid>
-                </StackPanel>
-            </Border>
-        </Grid>
         <!-- DIALOG OVERLAY: Restore Return Confirmation -->
         <Grid Background="{DynamicResource BgOverlay}" IsVisible="{Binding IsRestoreReturnDialogVisible}">
             <Border Background="{DynamicResource BgCardDark}" BorderBrush="{DynamicResource BorderSlate}" BorderThickness="1" CornerRadius="12" Padding="24" Width="400" VerticalAlignment="Center" HorizontalAlignment="Center">
@@ -775,5 +683,23 @@
                 </StackPanel>
             </Border>
         </Grid>
+
+        <!-- DIALOG OVERLAY: Confirmation (used SKU already sold, date for products added to an existing receipt) -->
+        <Grid Background="{DynamicResource BgOverlay}" IsVisible="{Binding IsConfirmVisible}">
+            <Border Background="{DynamicResource BgCardDark}" BorderBrush="{DynamicResource AccentYellow}" BorderThickness="1.5" CornerRadius="12" Padding="24" Width="500" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <StackPanel Spacing="16">
+                    <TextBlock Text="{Binding ConfirmTitle}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource AccentYellow}"/>
+                    <TextBlock Text="{Binding ConfirmMessage}" FontSize="13" Foreground="{DynamicResource TextPrimary}" TextWrapping="Wrap" LineHeight="20"/>
+                    <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="0,8,0,0">
+                        <Button Content="{Binding ConfirmCancelText}" Command="{Binding ConfirmCancelCommand}" Background="{DynamicResource BorderSlate}" Foreground="White" Height="36" Padding="16,0" VerticalContentAlignment="Center" CornerRadius="6"/>
+                        <Button Content="{Binding ConfirmSecondaryText}" Command="{Binding ConfirmSecondaryCommand}" IsVisible="{Binding HasConfirmSecondary}" Background="{DynamicResource AccentBlue}" Foreground="White" Height="36" Padding="16,0" VerticalContentAlignment="Center" CornerRadius="6" FontWeight="SemiBold"/>
+                        <Button Content="{Binding ConfirmPrimaryText}" Command="{Binding ConfirmPrimaryCommand}" Background="{DynamicResource AccentBlue}" Foreground="White" Height="36" Padding="16,0" VerticalContentAlignment="Center" CornerRadius="6" FontWeight="SemiBold"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- DIALOG OVERLAY: Return (full / partial / edit). Last so it sits above the receipt dialog. -->
+        <views:ReturnDialogView DataContext="{Binding ReturnDialog}"/>
     </Grid>
 </UserControl>

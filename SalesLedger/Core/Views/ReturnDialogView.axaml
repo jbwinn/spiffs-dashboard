@@ -1,0 +1,63 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SalesLedger.Core.ViewModels"
+             x:Class="SalesLedger.Core.Views.ReturnDialogView"
+             x:DataType="vm:ReturnDialogViewModel">
+
+    <!-- Full / partial return confirmation, also used to edit an existing return line -->
+    <Grid Background="{DynamicResource BgOverlay}" IsVisible="{Binding IsVisible}">
+        <Border Background="{DynamicResource BgCardDark}" BorderBrush="{DynamicResource BorderSlate}" BorderThickness="1" CornerRadius="12" Padding="24" Width="460" VerticalAlignment="Center" HorizontalAlignment="Center">
+            <StackPanel Spacing="16">
+                <StackPanel Spacing="4">
+                    <TextBlock Text="{Binding Title}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
+                    <TextBlock Text="{Binding ProductText}" FontSize="12" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"/>
+                </StackPanel>
+
+                <TextBlock Text="{Binding NoticeText}" FontSize="12" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"/>
+
+                <!-- Sale amounts -->
+                <Border Background="{DynamicResource BgAppDark}" BorderBrush="{DynamicResource BorderSlate}" BorderThickness="1" CornerRadius="6" Padding="12">
+                    <Grid ColumnDefinitions="*, Auto" RowDefinitions="Auto, Auto, Auto" RowSpacing="4">
+                        <TextBlock Grid.Row="0" Text="Sale price" Foreground="{DynamicResource TextSecondary}" FontSize="12"/>
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding OriginalPriceText}" Foreground="{DynamicResource TextPrimary}" FontSize="12"/>
+                        <TextBlock Grid.Row="1" Text="Already refunded" Foreground="{DynamicResource TextSecondary}" FontSize="12"/>
+                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding AlreadyRefundedText}" Foreground="{DynamicResource TextPrimary}" FontSize="12"/>
+                        <TextBlock Grid.Row="2" Text="Remaining" Foreground="{DynamicResource TextSecondary}" FontSize="12" FontWeight="SemiBold"/>
+                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding RemainingText}" Foreground="{DynamicResource TextPrimary}" FontSize="12" FontWeight="SemiBold"/>
+                    </Grid>
+                </Border>
+
+                <Grid ColumnDefinitions="*, 12, *">
+                    <StackPanel Grid.Column="0" Spacing="4">
+                        <TextBlock Text="Refund Amount" Foreground="{DynamicResource TextPrimary}" FontSize="11"/>
+                        <NumericUpDown Value="{Binding RefundAmount, Mode=TwoWay}" Minimum="0" FormatString="C2" Height="36"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Spacing="4">
+                        <TextBlock Text="Return Date" Foreground="{DynamicResource TextPrimary}" FontSize="11"/>
+                        <CalendarDatePicker SelectedDate="{Binding ReturnDate, Mode=TwoWay}" Height="36" HorizontalAlignment="Stretch" VerticalContentAlignment="Center"/>
+                    </StackPanel>
+                </Grid>
+
+                <TextBlock Text="{Binding CommissionEffectText}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource AccentYellow}" TextWrapping="Wrap"/>
+                <TextBlock Text="{Binding ErrorMessage}" IsVisible="{Binding HasError}" FontSize="12" Foreground="{DynamicResource AccentRed}" TextWrapping="Wrap"/>
+
+                <Grid ColumnDefinitions="*, 12, *" Margin="0,8,0,0">
+                    <Button Grid.Column="0" Content="Cancel" Command="{Binding CloseCommand}" Background="{DynamicResource BorderSlate}" Foreground="White" Height="36" VerticalContentAlignment="Center" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" CornerRadius="6">
+                        <Button.Styles>
+                            <Style Selector="Button:pointerover">
+                                <Setter Property="Background" Value="{DynamicResource TextMuted}"/>
+                            </Style>
+                        </Button.Styles>
+                    </Button>
+                    <Button Grid.Column="2" Content="{Binding ConfirmButtonText}" Command="{Binding ConfirmCommand}" Background="{DynamicResource AccentRed}" Foreground="White" Height="36" VerticalContentAlignment="Center" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" CornerRadius="6" FontWeight="SemiBold">
+                        <Button.Styles>
+                            <Style Selector="Button:pointerover">
+                                <Setter Property="Background" Value="{DynamicResource AccentRedHover}"/>
+                            </Style>
+                        </Button.Styles>
+                    </Button>
+                </Grid>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -17,8 +18,16 @@ namespace SalesLedger.Core.Services
             QuestPDF.Settings.License = LicenseType.Community;
         }
 
-        public void GeneratePdfReport(PayoutReport report, List<SaleRecord> sales, UserSettings settings, string outputPath)
+        /// <param name="isPreview">The period hasn't been finalized yet (nothing is locked).</param>
+        /// <param name="reprintedAt">Set when an already-finalized report is regenerated later.</param>
+        public void GeneratePdfReport(PayoutReport report, List<SaleRecord> sales, UserSettings settings, string outputPath,
+            bool isPreview = false, DateTime? reprintedAt = null)
         {
+            var saleDates = sales.Where(PeriodTotals.IsSaleRow).Select(s => s.TransactionDate).ToList();
+            var coverage = saleDates.Count > 0
+                ? $"Sales dated: {saleDates.Min():MMM d, yyyy} – {saleDates.Max():MMM d, yyyy}"
+                : "Sales dated: (no sales)";
+
             var directory = Path.GetDirectoryName(outputPath);
             if (!string.IsNullOrEmpty(directory))
             {
@@ -53,10 +62,18 @@ namespace SalesLedger.Core.Services
                                     .FontColor(Color.FromHex(AppTheme.PrintTextSecondary));
                             });
 
-                            row.ConstantItem(200).Column(column =>
+                            row.ConstantItem(220).Column(column =>
                             {
                                 column.Item().Text($"Representative: {settings.UserDisplayName}").Bold().AlignRight();
-                                column.Item().Text($"Generated: {report.ReportGeneratedTimestamp.ToLocalTime():yyyy-MM-dd HH:mm}").AlignRight();
+                                column.Item().Text(isPreview
+                                        ? $"PREVIEW, not finalized: {DateTime.Now:yyyy-MM-dd HH:mm}"
+                                        : $"Finalized: {report.ReportGeneratedTimestamp.ToLocalTime():yyyy-MM-dd HH:mm}")
+                                    .AlignRight();
+                                column.Item().Text(coverage).FontSize(9).AlignRight();
+                                if (reprintedAt is { } reprinted)
+                                {
+                                    column.Item().Text($"Reprinted: {reprinted:yyyy-MM-dd HH:mm}").FontSize(9).AlignRight();
+                                }
                             });
                         });
                     });
@@ -64,28 +81,32 @@ namespace SalesLedger.Core.Services
                     // Content
                     page.Content().PaddingVertical(20).Column(column =>
                     {
-                        // Summary Stats Grid
+                        // Summary: same definitions as the dashboard KPIs (see PeriodTotals)
+                        var totals = PeriodTotals.From(sales);
+
+                        column.Item().PaddingBottom(10).Row(row =>
+                        {
+                            row.RelativeItem().Element(c => ConfigureStatCard(c, "Gross Sales", totals.GrossSales.ToString("C"), "Everything sold, incl. later returns"));
+                            row.ConstantItem(15);
+                            row.RelativeItem().Element(c => ConfigureStatCard(c, "Returns", (-totals.Returns).ToString("C"), "Refunds in this period"));
+                            row.ConstantItem(15);
+                            row.RelativeItem().Element(c => ConfigureStatCard(c, "Net Sales", totals.NetSales.ToString("C"), "Gross sales minus returns"));
+                        });
+
                         column.Item().PaddingBottom(20).Row(row =>
                         {
-                            var totalSales = sales.Where(s => s.Status != PayoutStatus.ReturnedBeforePayout).Sum(s => s.SalePrice);
-                            var totalCommission = sales.Sum(s => s.CalculatedCommission);
-                            var unitsSold = sales.Count(s => s.RecordType != SaleType.ReturnOffset && s.Status != PayoutStatus.ReturnedBeforePayout && !s.IsReturn);
-                            var standardSales = sales.Where(s => (s.RecordType == SaleType.Standard || s.RecordType == SaleType.Ebay) && s.SalePrice > 0 && s.Status != PayoutStatus.ReturnedBeforePayout && !s.IsReturn).ToList();
-                            var asp = standardSales.Any() ? standardSales.Average(s => s.SalePrice) : 0m;
-
-                            row.RelativeItem().Element(c => ConfigureStatCard(c, "Total Sales", totalSales.ToString("C")));
+                            row.RelativeItem().Element(c => ConfigureStatCard(c, "Units Sold (Net)", totals.NetUnits.ToString(),
+                                $"{totals.GrossUnits} sold · {totals.UnitsReturned} returned"));
                             row.ConstantItem(15);
-                            row.RelativeItem().Element(c => ConfigureStatCard(c, "Units Sold", unitsSold.ToString()));
+                            row.RelativeItem().Element(c => ConfigureStatCard(c, "Avg Sale Price", totals.AverageSalePrice.ToString("C"), "All sale types, items kept"));
                             row.ConstantItem(15);
-                            row.RelativeItem().Element(c => ConfigureStatCard(c, "Total Commission", totalCommission.ToString("C")));
-                            row.ConstantItem(15);
-                            row.RelativeItem().Element(c => ConfigureStatCard(c, "Avg Sale Price", asp.ToString("C")));
+                            row.RelativeItem().Element(c => ConfigureStatCard(c, "Commission Payout", totals.Commission.ToString("C"), "After return adjustments"));
                         });
 
                         // Sales Details Table title
                         column.Item().PaddingBottom(8).Text("Transaction Ledger Details").FontSize(14).Bold().FontColor(Color.FromHex(AppTheme.PrintAccentPrimary));
 
-                        void RenderSection(string title, List<SaleRecord> sectionSales)
+                        void RenderSection(string title, List<ReportRow> sectionSales)
                         {
                             if (!sectionSales.Any()) return;
 
@@ -117,28 +138,22 @@ namespace SalesLedger.Core.Services
 
                                 // Rows
                                 bool isAlternate = false;
-                                foreach (var sale in sectionSales.OrderBy(s => s.TransactionDate))
+                                foreach (var row in sectionSales.OrderBy(s => s.Date))
                                 {
                                     bool currentAlternate = isAlternate;
-                                    table.Cell().Element(c => ConfigureCell(c, currentAlternate)).Text(sale.TransactionDate.ToString("yyyy-MM-dd"));
-                                    table.Cell().Element(c => ConfigureCell(c, currentAlternate)).Text(sale.InvoiceNumber);
-                                    
-                                    var dispName = sale.ProductName;
-                                    if (sale.Status == PayoutStatus.ReturnedBeforePayout)
-                                    {
-                                        dispName += " (Returned before payout)";
-                                    }
-                                    table.Cell().Element(c => ConfigureCell(c, currentAlternate)).Text(dispName);
-                                    table.Cell().Element(c => ConfigureCell(c, currentAlternate)).Text(sale.Category);
-                                    table.Cell().Element(c => ConfigureCell(c, currentAlternate)).AlignRight().Text(sale.SalePrice.ToString("C"));
-                                    table.Cell().Element(c => ConfigureCell(c, currentAlternate)).AlignRight().Text(sale.CalculatedCommission.ToString("C"));
+                                    table.Cell().Element(c => ConfigureCell(c, currentAlternate)).Text(row.Date.ToString("yyyy-MM-dd"));
+                                    table.Cell().Element(c => ConfigureCell(c, currentAlternate)).Text(row.Invoice);
+                                    table.Cell().Element(c => ConfigureCell(c, currentAlternate)).Text(row.Product);
+                                    table.Cell().Element(c => ConfigureCell(c, currentAlternate)).Text(row.Category);
+                                    table.Cell().Element(c => ConfigureCell(c, currentAlternate)).AlignRight().Text(row.Price.ToString("C"));
+                                    table.Cell().Element(c => ConfigureCell(c, currentAlternate)).AlignRight().Text(row.Commission.ToString("C"));
 
                                     isAlternate = !isAlternate;
                                 }
 
                                 // Subtotals
-                                var subTotalSales = sectionSales.Where(s => s.Status != PayoutStatus.ReturnedBeforePayout).Sum(s => s.SalePrice);
-                                var subTotalComm = sectionSales.Sum(s => s.CalculatedCommission);
+                                var subTotalSales = sectionSales.Sum(s => s.Price);
+                                var subTotalComm = sectionSales.Sum(s => s.Commission);
 
                                 table.Cell().Element(ConfigureSubtotalCell).Text(string.Empty);
                                 table.Cell().Element(ConfigureSubtotalCell).Text(string.Empty);
@@ -149,11 +164,19 @@ namespace SalesLedger.Core.Services
                             });
                         }
 
-                        RenderSection("Standard Sales (New Gear)", sales.Where(s => s is StandardSale { IsUsedGear: false } && !s.IsReturn).ToList());
-                        RenderSection("Standard Sales (Used Gear)", sales.Where(s => s is StandardSale { IsUsedGear: true } && !s.IsReturn).ToList());
-                        RenderSection("eBay Sales", sales.Where(s => s is EbaySale && !s.IsReturn).ToList());
-                        RenderSection("Warranty Sales", sales.Where(s => s is WarrantySale && !s.IsReturn).ToList());
-                        RenderSection("Return Offsets", sales.Where(s => s.IsReturn).ToList());
+                        // Sale sections are gross: items returned before payout are listed (and noted) in their section,
+                        // and again as a refund under Returns, so section subtotals minus returns equals net sales.
+                        List<ReportRow> SalesOf(System.Func<SaleRecord, bool> filter) =>
+                            sales.Where(s => PeriodTotals.IsSaleRow(s) && filter(s)).Select(ReportRow.ForSale).ToList();
+
+                        RenderSection("Standard Sales (New Gear)", SalesOf(s => s is StandardSale { IsUsedGear: false }));
+                        RenderSection("Standard Sales (Used Gear)", SalesOf(s => s is StandardSale { IsUsedGear: true }));
+                        RenderSection("eBay Sales", SalesOf(s => s is EbaySale));
+                        RenderSection("Warranty Sales", SalesOf(s => s is WarrantySale));
+                        RenderSection("Returns",
+                            sales.Where(PeriodTotals.IsReturnLine).Select(ReportRow.ForReturnLine)
+                                .Concat(sales.Where(s => PeriodTotals.IsSaleRow(s) && s.Status == PayoutStatus.ReturnedBeforePayout).Select(ReportRow.ForReturnedBeforePayout))
+                                .ToList());
                     });
 
                     // Footer
@@ -167,7 +190,26 @@ namespace SalesLedger.Core.Services
             }).GeneratePdf(outputPath);
         }
 
-        private void ConfigureStatCard(IContainer container, string title, string value)
+        /// <summary>One line in a report table.</summary>
+        private sealed record ReportRow(DateTime Date, string Invoice, string Product, string Category, decimal Price, decimal Commission)
+        {
+            public static ReportRow ForSale(SaleRecord s) => new(
+                s.TransactionDate, s.InvoiceNumber,
+                s.Status == PayoutStatus.ReturnedBeforePayout ? $"{s.ProductName} (returned before payout)" : s.ProductName,
+                s.Category, s.SalePrice, s.CalculatedCommission);
+
+            public static ReportRow ForReturnLine(SaleRecord s) => new(
+                s.TransactionDate, s.InvoiceNumber,
+                s.IsReturn && !s.CompletesRefund ? $"{s.ProductName} (partial refund)" : s.ProductName,
+                s.Category, s.SalePrice, s.CalculatedCommission);
+
+            // The sale's commission was already zeroed, so the refund carries no further commission change
+            public static ReportRow ForReturnedBeforePayout(SaleRecord s) => new(
+                s.TransactionDate, s.InvoiceNumber, $"[RETURNED BEFORE PAYOUT] - {s.ProductName}",
+                s.Category, -s.SalePrice, 0m);
+        }
+
+        private void ConfigureStatCard(IContainer container, string title, string value, string? caption = null)
         {
             container
                 .Border(1)
@@ -178,6 +220,10 @@ namespace SalesLedger.Core.Services
                 {
                     col.Item().Text(title).FontSize(9).FontColor(Color.FromHex(AppTheme.PrintTextSecondary)).Bold();
                     col.Item().PaddingTop(4).Text(value).FontSize(14).Bold().FontColor(Color.FromHex(AppTheme.PrintAccentPrimary));
+                    if (!string.IsNullOrEmpty(caption))
+                    {
+                        col.Item().PaddingTop(2).Text(caption).FontSize(7).FontColor(Color.FromHex(AppTheme.PrintTextSecondary));
+                    }
                 });
         }
 

@@ -71,7 +71,8 @@ namespace SalesLedger.Core.Services
                     AssociatedReportId VARCHAR
                 );
                 ALTER TABLE sales ADD COLUMN IF NOT EXISTS IsReturn BOOLEAN;
-                ALTER TABLE sales ADD COLUMN IF NOT EXISTS OriginalSaleId VARCHAR;";
+                ALTER TABLE sales ADD COLUMN IF NOT EXISTS OriginalSaleId VARCHAR;
+                ALTER TABLE sales ADD COLUMN IF NOT EXISTS CompletesRefund BOOLEAN;";
             cmd.ExecuteNonQuery();
         }
 
@@ -106,11 +107,11 @@ namespace SalesLedger.Core.Services
                 INSERT INTO sales (
                     Id, RecordType, Status, TransactionDate, InvoiceNumber, Sku, ProductName, 
                     Category, SalePrice, CalculatedCommission, IsUsedGear, WarrantyTypeName, 
-                    ManufacturerPrice, NetMargin, AssociatedReportId, IsReturn, OriginalSaleId
+                    ManufacturerPrice, NetMargin, AssociatedReportId, IsReturn, OriginalSaleId, CompletesRefund
                 ) VALUES (
                     $id, $recordType, $status, $transactionDate, $invoiceNumber, $sku, $productName, 
                     $category, $salePrice, $calculatedCommission, $isUsedGear, $warrantyTypeName, 
-                    $manufacturerPrice, $netMargin, $associatedReportId, $isReturn, $originalSaleId
+                    $manufacturerPrice, $netMargin, $associatedReportId, $isReturn, $originalSaleId, $completesRefund
                 ) ON CONFLICT (Id) DO UPDATE SET 
                     RecordType = excluded.RecordType,
                     Status = excluded.Status,
@@ -127,7 +128,8 @@ namespace SalesLedger.Core.Services
                     NetMargin = excluded.NetMargin,
                     AssociatedReportId = excluded.AssociatedReportId,
                     IsReturn = excluded.IsReturn,
-                    OriginalSaleId = excluded.OriginalSaleId;";
+                    OriginalSaleId = excluded.OriginalSaleId,
+                    CompletesRefund = excluded.CompletesRefund;";
 
             cmd.Parameters.Add(new DuckDBParameter("id", sale.Id.ToString()));
             cmd.Parameters.Add(new DuckDBParameter("recordType", sale.RecordType.ToString()));
@@ -145,6 +147,7 @@ namespace SalesLedger.Core.Services
             cmd.Parameters.Add(new DuckDBParameter("netMargin", netMargin));
             cmd.Parameters.Add(new DuckDBParameter("isReturn", sale.IsReturn));
             cmd.Parameters.Add(new DuckDBParameter("originalSaleId", sale.OriginalSaleId?.ToString() ?? string.Empty));
+            cmd.Parameters.Add(new DuckDBParameter("completesRefund", sale.CompletesRefund));
             cmd.Parameters.Add(new DuckDBParameter("associatedReportId", sale.AssociatedReportId?.ToString() ?? string.Empty));
 
             cmd.ExecuteNonQuery();

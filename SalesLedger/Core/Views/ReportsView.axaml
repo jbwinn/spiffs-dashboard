@@ -1,0 +1,199 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:SalesLedger.Core.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="800"
+             x:Class="SalesLedger.Core.Views.ReportsView"
+             x:DataType="vm:ReportsViewModel"
+             Background="{DynamicResource BgAppDark}"
+             FontFamily="{DynamicResource FontPrimary}">
+
+    <UserControl.Styles>
+        <Style Selector="TextBlock.statLabel">
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        <Style Selector="TextBlock.statValue">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+            <Setter Property="FontSize" Value="20"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+        </Style>
+        <Style Selector="Button.action">
+            <Setter Property="Background" Value="{DynamicResource BorderSlate}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="CornerRadius" Value="4"/>
+        </Style>
+        <Style Selector="Button.action:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource TextMuted}"/>
+        </Style>
+        <Style Selector="Button.primary">
+            <Setter Property="Background" Value="{DynamicResource AccentBlue}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="CornerRadius" Value="6"/>
+        </Style>
+        <Style Selector="Button.primary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource AccentBlueHover}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid>
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="20" Margin="24">
+
+                <!-- CURRENT PAY PERIOD -->
+                <Border Background="{DynamicResource BgCardDark}" BorderBrush="{DynamicResource AccentBlue}" BorderThickness="1" CornerRadius="10" Padding="20">
+                    <StackPanel Spacing="16">
+                        <Grid ColumnDefinitions="*, Auto">
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Current Pay Period (Not Finalized)" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
+                                <TextBlock Text="{Binding OpenPeriodDescription}" FontSize="11" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Top">
+                                <Button Content="Preview PDF" Command="{Binding PreviewCurrentPeriodCommand}" Classes="action" Padding="14,8" FontSize="12"
+                                        ToolTip.Tip="See what the report will look like. Nothing is locked or saved to your reports folder."/>
+                                <Button Content="Finalize Pay Period…" Command="{Binding ShowFinalizeDialogCommand}" Classes="primary"
+                                        ToolTip.Tip="Lock everything below as Paid and save the payout report"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid ColumnDefinitions="*, *, *, *, *">
+                            <StackPanel Grid.Column="0" Spacing="4">
+                                <TextBlock Text="Items" Classes="statLabel"/>
+                                <TextBlock Text="{Binding OpenItemsText}" Classes="statValue"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Spacing="4">
+                                <TextBlock Text="Gross Sales" Classes="statLabel"/>
+                                <TextBlock Text="{Binding OpenGrossText}" Classes="statValue" Foreground="{DynamicResource AccentBlue}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Spacing="4">
+                                <TextBlock Text="Returns" Classes="statLabel"/>
+                                <TextBlock Text="{Binding OpenReturnsText}" Classes="statValue" Foreground="{DynamicResource AccentRed}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="3" Spacing="4">
+                                <TextBlock Text="Net Sales" Classes="statLabel"/>
+                                <TextBlock Text="{Binding OpenNetText}" Classes="statValue"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="4" Spacing="4">
+                                <TextBlock Text="Commission Payout" Classes="statLabel"/>
+                                <TextBlock Text="{Binding OpenPayoutText}" Classes="statValue" Foreground="{DynamicResource AccentOrange}"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- STATUS -->
+                <Border IsVisible="{Binding HasStatusMessage}" Background="{DynamicResource BgCardDark}" BorderBrush="{DynamicResource BorderSlate}" BorderThickness="1" CornerRadius="6" Padding="12,8">
+                    <Grid ColumnDefinitions="*, Auto">
+                        <TextBlock Text="{Binding StatusMessage}" FontSize="12" TextWrapping="Wrap" VerticalAlignment="Center"
+                                   Foreground="{Binding IsStatusError, Converter={StaticResource StatusColorConverter}}"/>
+                        <Button Grid.Column="1" Content="Dismiss" Command="{Binding DismissStatusCommand}" Classes="action" Margin="12,0,0,0"/>
+                    </Grid>
+                </Border>
+
+                <!-- HISTORY -->
+                <Border Background="{DynamicResource BgCardDark}" BorderBrush="{DynamicResource BorderSlate}" BorderThickness="1" CornerRadius="10" Padding="20">
+                    <StackPanel Spacing="14">
+                        <Grid ColumnDefinitions="*, Auto">
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Report History" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
+                                <TextBlock FontSize="11" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap">
+                                    <Run Text="Saved in"/>
+                                    <Run Text="{Binding ReportsFolderText}" FontWeight="SemiBold"/>
+                                    <Run Text="(change it in Settings). Paid records never change, so any report can be regenerated from the ledger."/>
+                                </TextBlock>
+                            </StackPanel>
+                            <Button Grid.Column="1" Content="Open Reports Folder" Command="{Binding OpenReportsFolderCommand}" Classes="action" VerticalAlignment="Top"/>
+                        </Grid>
+
+                        <TextBlock Text="No pay periods have been finalized yet. When you finalize one, its report will appear here."
+                                   IsVisible="{Binding !HasHistory}" FontSize="12" Foreground="{DynamicResource TextSecondary}" Margin="0,8"/>
+
+                        <ItemsControl ItemsSource="{Binding History}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:ReportRowViewModel">
+                                    <Border Background="{DynamicResource BgAppDark}" BorderBrush="{DynamicResource BorderSlate}" BorderThickness="1" CornerRadius="8" Padding="14" Margin="0,0,0,10">
+                                        <Grid ColumnDefinitions="*, Auto" RowDefinitions="Auto, Auto" RowSpacing="10">
+                                            <!-- Name, finalize date, period coverage -->
+                                            <StackPanel Grid.Row="0" Grid.Column="0" Spacing="3">
+                                                <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
+                                                <TextBlock Text="{Binding FinalizedText}" FontSize="11" Foreground="{DynamicResource AccentBlue}" FontWeight="SemiBold"/>
+                                                <TextBlock Text="{Binding CoverageText}" FontSize="11" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"/>
+                                            </StackPanel>
+
+                                            <!-- Totals -->
+                                            <Grid Grid.Row="0" Grid.Column="1" ColumnDefinitions="Auto, Auto, Auto, Auto" ColumnSpacing="24" VerticalAlignment="Top">
+                                                <StackPanel Grid.Column="0" Spacing="2">
+                                                    <TextBlock Text="Items" Classes="statLabel"/>
+                                                    <TextBlock Text="{Binding ItemsText}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="1" Spacing="2">
+                                                    <TextBlock Text="Gross" Classes="statLabel"/>
+                                                    <TextBlock Text="{Binding GrossText}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="2" Spacing="2">
+                                                    <TextBlock Text="Net" Classes="statLabel"/>
+                                                    <TextBlock Text="{Binding NetText}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="3" Spacing="2">
+                                                    <TextBlock Text="Payout" Classes="statLabel"/>
+                                                    <TextBlock Text="{Binding PayoutText}" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource AccentOrange}"/>
+                                                </StackPanel>
+                                            </Grid>
+
+                                            <!-- File + actions -->
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="{Binding FileStatusText}" FontSize="10" TextWrapping="Wrap" VerticalAlignment="Center"
+                                                       Foreground="{DynamicResource TextMuted}"/>
+                                            <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right">
+                                                <Button Content="Print" Classes="primary" Padding="14,5" FontSize="11"
+                                                        Command="{Binding $parent[UserControl].((vm:ReportsViewModel)DataContext).PrintReportCommand}" CommandParameter="{Binding}"/>
+                                                <Button Content="View" Classes="action"
+                                                        Command="{Binding $parent[UserControl].((vm:ReportsViewModel)DataContext).ViewReportCommand}" CommandParameter="{Binding}"/>
+                                                <Button Content="Copy" Classes="action" ToolTip.Tip="Copy the PDF, then paste it into an email or message"
+                                                        Command="{Binding $parent[UserControl].((vm:ReportsViewModel)DataContext).CopyReportCommand}" CommandParameter="{Binding}"/>
+                                                <Button Content="Show in Folder" Classes="action"
+                                                        Command="{Binding $parent[UserControl].((vm:ReportsViewModel)DataContext).ShowReportInFolderCommand}" CommandParameter="{Binding}"/>
+                                                <Button Content="Regenerate" Classes="action" ToolTip.Tip="Rebuild the PDF from the ledger (e.g. if it was moved or deleted)"
+                                                        Command="{Binding $parent[UserControl].((vm:ReportsViewModel)DataContext).RegenerateReportCommand}" CommandParameter="{Binding}"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- FINALIZE CONFIRMATION -->
+        <Grid Background="{DynamicResource BgOverlay}" IsVisible="{Binding IsFinalizeVisible}">
+            <Border Background="{DynamicResource BgCardDark}" BorderBrush="{DynamicResource AccentGreen}" BorderThickness="1.5" CornerRadius="12" Padding="24" Width="520" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <StackPanel Spacing="16">
+                    <TextBlock Text="Finalize Pay Period" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
+                    <Border Background="{DynamicResource BgAppDark}" BorderBrush="{DynamicResource BorderSlate}" BorderThickness="1" CornerRadius="6" Padding="12">
+                        <TextBlock Text="{Binding FinalizeSummaryText}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}" TextWrapping="Wrap"/>
+                    </Border>
+                    <TextBlock FontSize="12" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"
+                               Text="Everything in the current pay period is locked as Paid. The report is saved to your reports folder and opened so you can print it. This can't be undone (later returns are recorded in the next period)."/>
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Report Name" Foreground="{DynamicResource TextPrimary}" FontSize="11"/>
+                        <TextBox Text="{Binding PeriodReportName, Mode=TwoWay}" PlaceholderText="e.g. November 2026 Submission" Height="36" VerticalContentAlignment="Center"/>
+                    </StackPanel>
+                    <TextBlock Text="{Binding FinalizeError}" IsVisible="{Binding HasFinalizeError}" Foreground="{DynamicResource AccentRed}" FontSize="12" TextWrapping="Wrap"/>
+                    <Grid ColumnDefinitions="*, 12, *" Margin="0,8,0,0">
+                        <Button Grid.Column="0" Content="Cancel" Command="{Binding CloseFinalizeDialogCommand}" Background="{DynamicResource BorderSlate}" Foreground="White" Height="36"
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" CornerRadius="6"/>
+                        <Button Grid.Column="2" Content="Finalize &amp; Save Report" Command="{Binding ExecuteFinalizeCommand}" Background="{DynamicResource AccentGreen}" Foreground="White" Height="36"
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" CornerRadius="6" FontWeight="SemiBold"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

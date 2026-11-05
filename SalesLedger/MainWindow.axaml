@@ -28,22 +28,65 @@
                     </StackPanel>
                 </StackPanel>
                 
-                <!-- Navigation Toggle Button -->
-                <Button Grid.Column="1" 
-                        Content="{Binding SettingsButtonText}" 
-                        Command="{Binding ToggleWorkspaceCommand}" 
-                        Background="{DynamicResource AccentBlue}" 
-                        Foreground="White"
-                        FontWeight="SemiBold"
-                        Padding="16,8" 
-                        CornerRadius="6"
-                        BorderThickness="0">
-                    <Button.Styles>
-                        <Style Selector="Button:pointerover">
-                            <Setter Property="Background" Value="{DynamicResource AccentBlueHover}"/>
+                <!-- Navigation: the active page is highlighted -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <StackPanel.Styles>
+                        <Style Selector="Button.nav">
+                            <Setter Property="Background" Value="Transparent"/>
+                            <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
+                            <Setter Property="FontWeight" Value="SemiBold"/>
+                            <Setter Property="Padding" Value="16,8"/>
+                            <Setter Property="CornerRadius" Value="6"/>
+                            <Setter Property="BorderThickness" Value="0"/>
                         </Style>
-                    </Button.Styles>
-                </Button>
+                        <Style Selector="Button.nav:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                            <Setter Property="Background" Value="{DynamicResource BorderSlate}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+                        </Style>
+                        <!-- Each tab's own color (AppTheme.Nav*): tints its text on hover, fills it when active -->
+                        <Style Selector="Button.nav.dashboard:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                            <Setter Property="Foreground" Value="{DynamicResource NavDashboard}"/>
+                        </Style>
+                        <Style Selector="Button.nav.reports:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                            <Setter Property="Foreground" Value="{DynamicResource NavReports}"/>
+                        </Style>
+                        <Style Selector="Button.nav.settings:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                            <Setter Property="Foreground" Value="{DynamicResource NavSettings}"/>
+                        </Style>
+
+                        <Style Selector="Button.nav.dashboard.active">
+                            <Setter Property="Background" Value="{DynamicResource NavDashboard}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource NavDashboardText}"/>
+                        </Style>
+                        <Style Selector="Button.nav.dashboard.active:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                            <Setter Property="Background" Value="{DynamicResource NavDashboardHover}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource NavDashboardText}"/>
+                        </Style>
+                        <Style Selector="Button.nav.reports.active">
+                            <Setter Property="Background" Value="{DynamicResource NavReports}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource NavReportsText}"/>
+                        </Style>
+                        <Style Selector="Button.nav.reports.active:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                            <Setter Property="Background" Value="{DynamicResource NavReportsHover}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource NavReportsText}"/>
+                        </Style>
+                        <Style Selector="Button.nav.settings.active">
+                            <Setter Property="Background" Value="{DynamicResource NavSettings}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource NavSettingsText}"/>
+                        </Style>
+                        <Style Selector="Button.nav.settings.active:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                            <Setter Property="Background" Value="{DynamicResource NavSettingsHover}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource NavSettingsText}"/>
+                        </Style>
+                    </StackPanel.Styles>
+                    <Button Content="Dashboard" Classes="nav dashboard" Classes.active="{Binding IsDashboardActive}"
+                            Command="{Binding NavigateCommand}" CommandParameter="Dashboard"/>
+                    <Button Content="Payout Reports" Classes="nav reports" Classes.active="{Binding IsReportsActive}"
+                            Command="{Binding NavigateCommand}" CommandParameter="Reports"
+                            ToolTip.Tip="Current pay period, preview, finalize, and report history"/>
+                    <Button Content="Settings" Classes="nav settings" Classes.active="{Binding IsSettingsActive}"
+                            Command="{Binding NavigateCommand}" CommandParameter="Settings"/>
+                </StackPanel>
             </Grid>
         </Border>
 
@@ -52,6 +95,9 @@
             <TransitioningContentControl.DataTemplates>
                 <DataTemplate DataType="vm:LedgerDashboardViewModel">
                     <views:LedgerDashboardView />
+                </DataTemplate>
+                <DataTemplate DataType="vm:ReportsViewModel">
+                    <views:ReportsView />
                 </DataTemplate>
                 <DataTemplate DataType="vm:FullScreenSettingsViewModel">
                     <views:FullScreenSettingsView />

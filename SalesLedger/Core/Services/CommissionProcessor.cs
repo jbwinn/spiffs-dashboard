@@ -7,18 +7,12 @@ namespace SalesLedger.Core.Services
 {
     public class CommissionProcessor
     {
-        public decimal CalculateLineItem(SaleRecord sale, List<CommissionRule> activeRules)
+        /// <summary>
+        /// Returns the first rule in the priority waterfall that matches the sale, or null if none match.
+        /// </summary>
+        public CommissionRule? FindMatchingRule(SaleRecord sale, IEnumerable<CommissionRule> activeRules)
         {
-            // Return offsets carry their own fixed pre-calculated negative commission
-            if (sale.IsReturn || sale is ReturnOffsetSale)
-            {
-                return sale.CalculatedCommission;
-            }
-
-            // Enforce sorting sequence matching the defined waterfall ranking hierarchy
-            var waterfall = activeRules.OrderBy(r => r.PriorityOrder).ToList();
-
-            foreach (var rule in waterfall)
+            foreach (var rule in activeRules.OrderBy(r => r.PriorityOrder))
             {
                 bool isMatch = rule.Scope switch
                 {
@@ -31,29 +25,53 @@ namespace SalesLedger.Core.Services
 
                 if (isMatch)
                 {
-                    if (rule.CalculationType == PayoutType.PercentageOfPrice)
-                    {
-                        return Math.Round(sale.SalePrice * rule.RuleValue, 2);
-                    }
-                    else if (rule.CalculationType == PayoutType.PercentageOfNetProfit)
-                    {
-                        if (sale is WarrantySale warrantySale)
-                        {
-                            return Math.Round(warrantySale.NetMargin * rule.RuleValue, 2);
-                        }
-                        else
-                        {
-                            return Math.Round(sale.SalePrice * rule.RuleValue, 2);
-                        }
-                    }
-                    else
-                    {
-                        return rule.RuleValue;
-                    }
+                    return rule;
                 }
             }
 
-            return 0.00m; // Fallback value if zero conditional rules evaluate to true
+            return null;
+        }
+
+        public decimal CalculateLineItem(SaleRecord sale, List<CommissionRule> activeRules)
+        {
+            // Return lines carry their own clawback, computed by PayoutLedgerService
+            if (IsReturnRecord(sale))
+            {
+                return sale.CalculatedCommission;
+            }
+
+            var rule = FindMatchingRule(sale, activeRules);
+            return rule == null ? 0.00m : Calculate(sale, rule);
+        }
+
+        /// <summary>
+        /// Calculates the commission and records which payout method produced it.
+        /// Return lines are left untouched.
+        /// </summary>
+        public void ApplyCommission(SaleRecord sale, List<CommissionRule> activeRules)
+        {
+            if (IsReturnRecord(sale))
+            {
+                return;
+            }
+
+            var rule = FindMatchingRule(sale, activeRules);
+            sale.CalculatedCommission = rule == null ? 0.00m : Calculate(sale, rule);
+            sale.AppliedCalculationType = rule?.CalculationType;
+        }
+
+        private static bool IsReturnRecord(SaleRecord sale) => sale.IsReturn || sale is ReturnOffsetSale;
+
+        private static decimal Calculate(SaleRecord sale, CommissionRule rule)
+        {
+            return rule.CalculationType switch
+            {
+                PayoutType.PercentageOfPrice => Math.Round(sale.SalePrice * rule.RuleValue, 2),
+                PayoutType.PercentageOfNetProfit => sale is WarrantySale warrantySale
+                    ? Math.Round(warrantySale.NetMargin * rule.RuleValue, 2)
+                    : Math.Round(sale.SalePrice * rule.RuleValue, 2),
+                _ => rule.RuleValue
+            };
         }
     }
 }

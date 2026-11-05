@@ -1,18 +1,28 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Media;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
 using SalesLedger.Core.Theme;
 
 namespace SalesLedger;
 
 public class App : Application
 {
+    /// <summary>Debug builds attach Avalonia's developer tools; UI tests turn this off (it keeps the test process alive).</summary>
+    public static bool EnableDeveloperTools { get; set; } = true;
+
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
 #if DEBUG
-        this.AttachDeveloperTools();
+        if (EnableDeveloperTools)
+        {
+            this.AttachDeveloperTools();
+        }
 #endif
     }
 
@@ -39,9 +49,30 @@ public class App : Application
         Resources["AccentPink"] = new SolidColorBrush(Color.Parse(AppTheme.AccentBrown));
         Resources["AccentPinkHover"] = new SolidColorBrush(Color.Parse(AppTheme.AccentBrownHover));
 
+        // Header navigation colors (one accent per page)
+        Resources["NavDashboard"] = new SolidColorBrush(Color.Parse(AppTheme.NavDashboard));
+        Resources["NavDashboardHover"] = new SolidColorBrush(Color.Parse(AppTheme.NavDashboardHover));
+        Resources["NavDashboardText"] = new SolidColorBrush(Color.Parse(AppTheme.NavDashboardText));
+        Resources["NavReports"] = new SolidColorBrush(Color.Parse(AppTheme.NavReports));
+        Resources["NavReportsHover"] = new SolidColorBrush(Color.Parse(AppTheme.NavReportsHover));
+        Resources["NavReportsText"] = new SolidColorBrush(Color.Parse(AppTheme.NavReportsText));
+        Resources["NavSettings"] = new SolidColorBrush(Color.Parse(AppTheme.NavSettings));
+        Resources["NavSettingsHover"] = new SolidColorBrush(Color.Parse(AppTheme.NavSettingsHover));
+        Resources["NavSettingsText"] = new SolidColorBrush(Color.Parse(AppTheme.NavSettingsText));
+
         // Register Brand Typography Families
         Resources["FontPrimary"] = new FontFamily(AppTheme.FontPrimaryName);
         Resources["FontSecondary"] = new FontFamily(AppTheme.FontSecondaryName);
+
+        // Number boxes (prices, refunds, rule values) select their contents when focused, so typing "250"
+        // replaces "$0.00" instead of producing "$0.00250"
+        InputElement.GotFocusEvent.AddClassHandler<TextBox>((textBox, _) =>
+        {
+            if (textBox.FindAncestorOfType<NumericUpDown>() != null)
+            {
+                Dispatcher.UIThread.Post(textBox.SelectAll, DispatcherPriority.Input);
+            }
+        }, handledEventsToo: true);
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {

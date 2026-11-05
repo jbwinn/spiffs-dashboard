@@ -1,0 +1,323 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SalesLedger.Core.ViewModels"
+             x:Class="SalesLedger.Core.Views.CsvImportDialogView"
+             x:DataType="vm:CsvImportViewModel">
+
+    <UserControl.Styles>
+        <Style Selector="TextBlock.label">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+            <Setter Property="FontSize" Value="10"/>
+        </Style>
+        <Style Selector="TextBlock.section">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+        </Style>
+        <Style Selector="Button.secondary">
+            <Setter Property="Background" Value="{DynamicResource BorderSlate}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="Padding" Value="16,0"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.primary">
+            <Setter Property="Background" Value="{DynamicResource AccentPurple}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="Padding" Value="16,0"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid Background="{DynamicResource BgOverlay}" IsVisible="{Binding IsVisible}">
+        <Border Background="{DynamicResource BgCardDark}" BorderBrush="{DynamicResource BorderSlate}" BorderThickness="1" CornerRadius="12" Padding="24"
+                Width="900" MaxHeight="760" Margin="24" VerticalAlignment="Center" HorizontalAlignment="Center">
+            <Grid RowDefinitions="Auto, *, Auto" RowSpacing="16">
+
+                <!-- Header -->
+                <StackPanel Grid.Row="0" Spacing="4">
+                    <TextBlock Text="Import CSV Spiff Sheet" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
+                    <TextBlock IsVisible="{Binding IsMappingStep}" Text="Step 1 of 2: choose a file and match its columns. Nothing is saved until you review and confirm." FontSize="11" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"/>
+                    <TextBlock IsVisible="{Binding IsReviewStep}" Text="Step 2 of 2: review the rows. Fix any problems below, decide on possible duplicates, then import." FontSize="11" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"/>
+                </StackPanel>
+
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <Panel>
+                        <!-- ============ STEP 1: FILE + MAPPING ============ -->
+                        <StackPanel Spacing="16" IsVisible="{Binding IsMappingStep}" Margin="0,0,12,0">
+                            <Grid ColumnDefinitions="2*, 12, *">
+                                <StackPanel Grid.Column="0" Spacing="4">
+                                    <TextBlock Text="CSV File" Classes="label"/>
+                                    <Grid ColumnDefinitions="*, 8, Auto">
+                                        <TextBox Text="{Binding CsvFilePath}" IsReadOnly="True" PlaceholderText="Select file..." Height="36" VerticalContentAlignment="Center"/>
+                                        <Button Grid.Column="2" Content="Browse..." Command="{Binding BrowseCsvFileCommand}" Classes="secondary"/>
+                                    </Grid>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Spacing="4">
+                                    <TextBlock Text="Import Records As" Classes="label"/>
+                                    <ComboBox ItemsSource="{Binding ImportTypeOptions}" SelectedItem="{Binding ImportAsType, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="36" VerticalContentAlignment="Center"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <StackPanel Spacing="12" IsVisible="{Binding HasHeaders}">
+                                <TextBlock Text="Column Mapping" Classes="section"/>
+
+                                <Grid ColumnDefinitions="*, 12, *, 12, *" RowDefinitions="Auto, Auto, Auto" RowSpacing="12">
+                                    <StackPanel Grid.Row="0" Grid.Column="0" Spacing="4">
+                                        <TextBlock Text="Date" Classes="label"/>
+                                        <ComboBox ItemsSource="{Binding CsvHeaders}" SelectedItem="{Binding SelectedDateHeader, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="32"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="0" Grid.Column="2" Spacing="4">
+                                        <TextBlock Text="Invoice / Receipt / Order Code" Classes="label"/>
+                                        <ComboBox ItemsSource="{Binding CsvHeaders}" SelectedItem="{Binding SelectedInvoiceHeader, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="32"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="0" Grid.Column="4" Spacing="4">
+                                        <TextBlock Text="Sale Price (required)" Classes="label"/>
+                                        <ComboBox ItemsSource="{Binding CsvHeaders}" SelectedItem="{Binding SelectedPriceHeader, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="32"/>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Row="1" Grid.Column="0" Spacing="4">
+                                        <TextBlock Text="Product SKU" Classes="label"/>
+                                        <ComboBox ItemsSource="{Binding CsvHeaders}" SelectedItem="{Binding SelectedSkuHeader, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="32"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="1" Grid.Column="2" Spacing="4">
+                                        <TextBlock Text="Product Name" Classes="label"/>
+                                        <ComboBox ItemsSource="{Binding CsvHeaders}" SelectedItem="{Binding SelectedProductNameHeader, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="32"/>
+                                    </StackPanel>
+
+                                    <!-- Standard / eBay -->
+                                    <StackPanel Grid.Row="1" Grid.Column="4" Spacing="4" IsVisible="{Binding IsStandardOrEbayImport}">
+                                        <TextBlock Text="Category" Classes="label"/>
+                                        <ComboBox ItemsSource="{Binding CsvHeaders}" SelectedItem="{Binding SelectedCategoryHeader, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="32"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="2" Grid.Column="0" Spacing="4" IsVisible="{Binding IsStandardOrEbayImport}">
+                                        <TextBlock Text="Used / New Column" Classes="label"/>
+                                        <ComboBox ItemsSource="{Binding CsvHeaders}" SelectedItem="{Binding SelectedIsUsedHeader, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="32"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="2" Grid.Column="2" Spacing="4" IsVisible="{Binding IsStandardOrEbayImport}">
+                                        <TextBlock Text="Category for rows with no category" Classes="label"/>
+                                        <ComboBox ItemsSource="{Binding Categories}" SelectedItem="{Binding DefaultCategory, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="32"/>
+                                    </StackPanel>
+                                    <CheckBox Grid.Row="2" Grid.Column="4" IsChecked="{Binding AllStandardAreUsed, Mode=TwoWay}" IsVisible="{Binding IsStandardOrEbayImport}" VerticalAlignment="Bottom">
+                                        <TextBlock Text="Treat rows as USED unless marked new" Foreground="{DynamicResource TextSecondary}" FontSize="10" TextWrapping="Wrap"/>
+                                    </CheckBox>
+
+                                    <!-- Warranty -->
+                                    <StackPanel Grid.Row="1" Grid.Column="4" Spacing="4" IsVisible="{Binding IsWarrantyImport}">
+                                        <TextBlock Text="Warranty Type" Classes="label"/>
+                                        <ComboBox ItemsSource="{Binding CsvHeaders}" SelectedItem="{Binding SelectedWarrantyTypeHeader, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="32"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="2" Grid.Column="0" Spacing="4" IsVisible="{Binding IsWarrantyImport}">
+                                        <TextBlock Text="Wholesale Price" Classes="label"/>
+                                        <ComboBox ItemsSource="{Binding CsvHeaders}" SelectedItem="{Binding SelectedWholesalePriceHeader, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="32"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="2" Grid.Column="2" Spacing="4" IsVisible="{Binding IsWarrantyImport}">
+                                        <TextBlock Text="Warranty type for rows with none" Classes="label"/>
+                                        <ComboBox ItemsSource="{Binding WarrantyTypes}" SelectedItem="{Binding DefaultWarrantyType, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="32"/>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+
+                            <TextBlock Text="{Binding MappingError}" IsVisible="{Binding HasMappingError}" Foreground="{DynamicResource AccentRed}" FontSize="12" TextWrapping="Wrap"/>
+                        </StackPanel>
+
+                        <!-- ============ STEP 2: REVIEW ============ -->
+                        <StackPanel Spacing="16" IsVisible="{Binding IsReviewStep}" Margin="0,0,12,0">
+                            <Border Background="{DynamicResource BgAppDark}" BorderBrush="{DynamicResource BorderSlate}" BorderThickness="1" CornerRadius="6" Padding="12">
+                                <TextBlock Text="{Binding ReviewSummaryText}" Foreground="{DynamicResource TextPrimary}" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                            </Border>
+
+                            <!-- File-level warnings -->
+                            <ItemsControl ItemsSource="{Binding Warnings}" IsVisible="{Binding HasWarnings}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="x:String">
+                                        <TextBlock Text="{Binding}" Foreground="{DynamicResource AccentYellow}" FontSize="11" TextWrapping="Wrap" Margin="0,2"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <!-- Problem rows: editable -->
+                            <StackPanel Spacing="8" IsVisible="{Binding HasProblemRows}">
+                                <TextBlock Text="Needs Fixing" Classes="section"/>
+                                <TextBlock Text="These rows can't be imported as they are. Correct them here, or save them as a CSV to fix in a spreadsheet and import later." FontSize="11" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"/>
+                                <ItemsControl ItemsSource="{Binding ProblemRows}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:ImportRowViewModel">
+                                            <Border Background="{DynamicResource BgAppDark}" BorderBrush="{DynamicResource BorderSlate}" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,0,0,8">
+                                                <StackPanel Spacing="8">
+                                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                                        <TextBlock Text="{Binding RowLabel}" Foreground="{DynamicResource TextPrimary}" FontWeight="Bold" FontSize="12"/>
+                                                        <TextBlock Text="{Binding ErrorText}" IsVisible="{Binding HasErrors}" Foreground="{DynamicResource AccentRed}" FontSize="12" TextWrapping="Wrap"/>
+                                                        <TextBlock Text="✓ Fixed, will be imported" IsVisible="{Binding IsIncluded}" Foreground="{DynamicResource AccentGreen}" FontSize="12" FontWeight="SemiBold"/>
+                                                    </StackPanel>
+
+                                                    <Grid ColumnDefinitions="*, 8, *, 8, *, 8, 2*" RowDefinitions="Auto, Auto" RowSpacing="8">
+                                                        <StackPanel Grid.Column="0" Spacing="2">
+                                                            <TextBlock Text="Date" Classes="label"/>
+                                                            <TextBox Text="{Binding Date, Mode=TwoWay}" Height="30" FontSize="12"/>
+                                                        </StackPanel>
+                                                        <StackPanel Grid.Column="2" Spacing="2">
+                                                            <TextBlock Text="Invoice" Classes="label"/>
+                                                            <TextBox Text="{Binding Invoice, Mode=TwoWay}" Height="30" FontSize="12"/>
+                                                        </StackPanel>
+                                                        <StackPanel Grid.Column="4" Spacing="2">
+                                                            <TextBlock Text="SKU" Classes="label"/>
+                                                            <TextBox Text="{Binding Sku, Mode=TwoWay}" Height="30" FontSize="12"/>
+                                                        </StackPanel>
+                                                        <StackPanel Grid.Column="6" Spacing="2">
+                                                            <TextBlock Text="Product Name" Classes="label"/>
+                                                            <TextBox Text="{Binding ProductName, Mode=TwoWay}" Height="30" FontSize="12"/>
+                                                        </StackPanel>
+
+                                                        <StackPanel Grid.Row="1" Grid.Column="0" Spacing="2">
+                                                            <TextBlock Text="Price" Classes="label"/>
+                                                            <TextBox Text="{Binding Price, Mode=TwoWay}" Height="30" FontSize="12"/>
+                                                        </StackPanel>
+
+                                                        <!-- Standard / eBay: category -->
+                                                        <StackPanel Grid.Row="1" Grid.Column="2" Spacing="2" IsVisible="{Binding IsStandardOrEbay}">
+                                                            <TextBlock Text="Category" Classes="label"/>
+                                                            <TextBox Text="{Binding Category, Mode=TwoWay}" Height="30" FontSize="12"/>
+                                                        </StackPanel>
+                                                        <StackPanel Grid.Row="1" Grid.Column="4" Spacing="2" IsVisible="{Binding IsStandardOrEbay}">
+                                                            <TextBlock Text="…or pick a category" Classes="label"/>
+                                                            <ComboBox ItemsSource="{Binding CategoryOptions}" SelectedItem="{Binding CategoryChoice, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="30" FontSize="12"/>
+                                                        </StackPanel>
+
+                                                        <!-- Warranty: type + wholesale -->
+                                                        <StackPanel Grid.Row="1" Grid.Column="2" Spacing="2" IsVisible="{Binding IsWarranty}">
+                                                            <TextBlock Text="Warranty Type" Classes="label"/>
+                                                            <TextBox Text="{Binding WarrantyType, Mode=TwoWay}" Height="30" FontSize="12"/>
+                                                        </StackPanel>
+                                                        <StackPanel Grid.Row="1" Grid.Column="4" Spacing="2" IsVisible="{Binding IsWarranty}">
+                                                            <TextBlock Text="…or pick a type" Classes="label"/>
+                                                            <ComboBox ItemsSource="{Binding WarrantyTypeOptions}" SelectedItem="{Binding WarrantyTypeChoice, Mode=TwoWay}" HorizontalAlignment="Stretch" Height="30" FontSize="12"/>
+                                                        </StackPanel>
+                                                        <StackPanel Grid.Row="1" Grid.Column="6" Spacing="2" IsVisible="{Binding IsWarranty}">
+                                                            <TextBlock Text="Wholesale Price" Classes="label"/>
+                                                            <TextBox Text="{Binding WholesalePrice, Mode=TwoWay}" Height="30" FontSize="12"/>
+                                                        </StackPanel>
+                                                    </Grid>
+
+                                                    <!-- A fixed row can turn out to match an existing sale -->
+                                                    <StackPanel Spacing="4" IsVisible="{Binding IsDuplicate}">
+                                                        <TextBlock Text="{Binding DuplicateText}" Foreground="{DynamicResource AccentYellow}" FontSize="11" TextWrapping="Wrap"/>
+                                                        <CheckBox IsChecked="{Binding ImportAnyway, Mode=TwoWay}">
+                                                            <TextBlock Text="This is a different sale, import it anyway" Foreground="{DynamicResource TextPrimary}" FontSize="11"/>
+                                                        </CheckBox>
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+
+                            <!-- Possible duplicates: reviewed, not rejected -->
+                            <StackPanel Spacing="8" IsVisible="{Binding HasDuplicateRows}">
+                                <Grid ColumnDefinitions="*, Auto, 8, Auto">
+                                    <TextBlock Text="Possible Duplicates" Classes="section" VerticalAlignment="Center"/>
+                                    <Button Grid.Column="1" Content="Import All" Command="{Binding ImportAllDuplicatesCommand}" Classes="secondary" Height="28" FontSize="11"/>
+                                    <Button Grid.Column="3" Content="Skip All" Command="{Binding SkipAllDuplicatesCommand}" Classes="secondary" Height="28" FontSize="11"/>
+                                </Grid>
+                                <TextBlock Text="These rows look like something already in the ledger: the same sale (same day, price, SKU and invoice), or a used/eBay item whose SKU has been sold before (including returned items being sold again). They are skipped unless you tick them." FontSize="11" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"/>
+                                <ItemsControl ItemsSource="{Binding DuplicateRows}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:ImportRowViewModel">
+                                            <Border Background="{DynamicResource BgAppDark}" BorderBrush="{DynamicResource BorderSlate}" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,6">
+                                                <Grid ColumnDefinitions="*, Auto">
+                                                    <StackPanel Spacing="3">
+                                                        <TextBlock Foreground="{DynamicResource TextPrimary}" FontSize="12" TextWrapping="Wrap">
+                                                            <Run Text="{Binding RowLabel}" FontWeight="Bold"/>
+                                                            <Run Text=": "/>
+                                                            <Run Text="{Binding SummaryText}"/>
+                                                        </TextBlock>
+                                                        <TextBlock Text="{Binding DuplicateText}" Foreground="{DynamicResource AccentYellow}" FontSize="11" TextWrapping="Wrap"/>
+                                                    </StackPanel>
+                                                    <CheckBox Grid.Column="1" IsChecked="{Binding ImportAnyway, Mode=TwoWay}" VerticalAlignment="Center" Margin="12,0,0,0">
+                                                        <TextBlock Text="Import anyway" Foreground="{DynamicResource TextPrimary}" FontSize="11"/>
+                                                    </CheckBox>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+
+                            <!-- Ready rows -->
+                            <Expander IsVisible="{Binding HasReadyRows}" HorizontalAlignment="Stretch">
+                                <Expander.Header>
+                                    <TextBlock Foreground="{DynamicResource TextPrimary}" FontSize="13" FontWeight="Bold">
+                                        <Run Text="Ready to Import ("/>
+                                        <Run Text="{Binding ReadyRows.Count}"/>
+                                        <Run Text=")"/>
+                                    </TextBlock>
+                                </Expander.Header>
+                                <ItemsControl ItemsSource="{Binding ReadyRows}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:ImportRowViewModel">
+                                            <TextBlock Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,2" TextTrimming="CharacterEllipsis">
+                                                <Run Text="{Binding RowLabel}" FontWeight="SemiBold"/>
+                                                <Run Text=": "/>
+                                                <Run Text="{Binding SummaryText}"/>
+                                            </TextBlock>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Expander>
+
+                            <!-- Ignored rows (totals, blank) -->
+                            <Expander IsVisible="{Binding HasSkippedRows}" HorizontalAlignment="Stretch">
+                                <Expander.Header>
+                                    <TextBlock Text="Ignored Rows (totals and rows with no product)" Foreground="{DynamicResource TextSecondary}" FontSize="12" FontWeight="SemiBold"/>
+                                </Expander.Header>
+                                <ItemsControl ItemsSource="{Binding SkippedRows}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="x:String">
+                                            <TextBlock Text="{Binding}" Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,2"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Expander>
+                        </StackPanel>
+
+                        <!-- ============ STEP 3: DONE ============ -->
+                        <StackPanel Spacing="12" IsVisible="{Binding IsDoneStep}" Margin="0,0,12,0">
+                            <TextBlock Text="Import Complete" Classes="section" FontSize="15"/>
+                            <TextBlock Text="{Binding ResultText}" Foreground="{DynamicResource TextPrimary}" FontSize="13" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Panel>
+                </ScrollViewer>
+
+                <!-- Footer -->
+                <StackPanel Grid.Row="2" Spacing="10">
+                    <TextBlock Text="{Binding StatusMessage}" IsVisible="{Binding HasStatusMessage}" Foreground="{DynamicResource AccentYellow}" FontSize="12" TextWrapping="Wrap"/>
+
+                    <!-- Step 1 buttons -->
+                    <Grid ColumnDefinitions="*, Auto, 12, Auto" IsVisible="{Binding IsMappingStep}">
+                        <Button Grid.Column="1" Content="Cancel" Command="{Binding CloseCommand}" Classes="secondary"/>
+                        <Button Grid.Column="3" Content="Review Rows →" Command="{Binding ReviewCommand}" Classes="primary" IsEnabled="{Binding HasHeaders}"/>
+                    </Grid>
+
+                    <!-- Step 2 buttons -->
+                    <Grid ColumnDefinitions="Auto, *, Auto, 12, Auto, 12, Auto" IsVisible="{Binding IsReviewStep}">
+                        <Button Grid.Column="0" Content="← Back" Command="{Binding BackCommand}" Classes="secondary"/>
+                        <Button Grid.Column="2" Content="Save Problem Rows as CSV..." Command="{Binding SaveProblemRowsCommand}" Classes="secondary" IsVisible="{Binding HasUnresolvedProblems}"/>
+                        <Button Grid.Column="4" Content="Cancel" Command="{Binding CloseCommand}" Classes="secondary"/>
+                        <Button Grid.Column="6" Content="{Binding ImportButtonText}" Command="{Binding ImportCommand}" Classes="primary"/>
+                    </Grid>
+
+                    <!-- Step 3 buttons -->
+                    <Grid ColumnDefinitions="*, Auto, 12, Auto" IsVisible="{Binding IsDoneStep}">
+                        <Button Grid.Column="1" Content="Save Problem Rows as CSV..." Command="{Binding SaveProblemRowsCommand}" Classes="secondary" IsVisible="{Binding HasUnresolvedProblems}"/>
+                        <Button Grid.Column="3" Content="Done" Command="{Binding CloseCommand}" Classes="primary"/>
+                    </Grid>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>
